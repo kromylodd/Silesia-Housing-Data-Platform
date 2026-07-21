@@ -1,0 +1,11 @@
+# Python caches and environment
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+venv/
+env/
+
+# Ignore local scraped data so you don't bloat your GitHub repo
+data/
+*.csv

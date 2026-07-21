@@ -1,0 +1,17 @@
+{
+  "id": 987654321,
+  "title": "Mieszkanie 2 pokoje Katowice Center",
+  "url": "https://www.olx.pl/d/oferta/mieszkanie-2-pokoje-katowice-ID123.html",
+  "created_time": "2026-07-21T10:00:00+02:00",
+  "location": {
+    "city": { "name": "Katowice" },
+    "district": { "name": "Koszutka" }
+  },
+  "map": { "lat": 50.2649, "lon": 19.0238 },
+  "params": [
+    { "key": "price", "value": { "__typename": "PriceParam", "value": 2500, "currency": "PLN" } },
+    { "key": "m", "value": { "__typename": "GenericParam", "key": "m", "label": "48,5 m²" } },
+    { "key": "rent", "value": { "__typename": "GenericParam", "key": "rent", "label": "650 zł" } },
+    { "key": "rooms", "value": { "__typename": "GenericParam", "key": "rooms", "label": "2 pokoje" } }
+  ]
+}
