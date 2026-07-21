@@ -1,11 +1,24 @@
-# Python caches and environment
+# --- Python ---
 __pycache__/
-.pytest_cache/
 *.pyc
-.env
-venv/
+*.pyo
+*.pyd
+.Python
 env/
+venv/
+ENV/
+.env
 
-# Ignore local scraped data so you don't bloat your GitHub repo
+# --- Testing & Logs ---
+.pytest_cache/
+*.log
+
+# --- IDE Settings (PyCharm) ---
+.idea/
+*.iml
+
+# --- Project Data & Keys (Local Only) ---
 data/
 *.csv
+gcp-key.json
+*.json
