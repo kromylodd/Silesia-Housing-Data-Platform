@@ -105,11 +105,65 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
 
 
-if __name__ == "__main__":
-    city_to_scrape = "katowice"
-    print(f"Fetching data for {city_to_scrape}...")
+def scrape_city(city, max_pages=25):
+    """Scrapes and parses all sale listings for a single city, paginating through results."""
+    all_listings = []
+    limit = 40
 
-    raw_response = fetch_olx_page(city=city_to_scrape, offset=0, limit=40)
+    for page in range(max_pages):
+        offset = page * limit
+        print(f"[{city.upper()}] Fetching page {page + 1} (offset: {offset})...")
+
+        try:
+            res_json = fetch_olx_page(city=city, offset=offset, limit=limit)
+        except RuntimeError as err:
+            print(f"[{city.upper()}] Giving up: {err}")
+            break
+
+        if "errors" in res_json:
+            print(f"[{city.upper()}] GraphQL Error response: {res_json['errors']}")
+            break
+
+        listings_data = res_json.get("data", {}).get("clientCompatibleListings", {})
+
+        if listings_data.get("__typename") != "ListingSuccess":
+            print(f"[{city.upper()}] Non-success response: {listings_data}")
+            break
+
+        raw_items = listings_data.get("data", [])
+        if not raw_items:
+            break
+
+        for item in raw_items:
+            try:
+                all_listings.append(clean_listing_data(item))
+            except Exception as err:
+                print(f"[{city.upper()}] Skipping ad due to error: {err}")
+
+        if len(raw_items) < limit:
+            break  # last page reached
+
+        time.sleep(random.uniform(1.5, 3.5))
+
+    unique_listings = list({item["id"]: item for item in all_listings}.values())
+    print(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
+    return unique_listings
+
+
+if __name__ == "__main__":
+    TARGET_CITIES = [
+        "katowice", "gliwice", "zabrze", "bytom",
+        "chorzow", "tychy", "sosnowiec", "bielsko-biala"
+    ]
+
+    for target_city in TARGET_CITIES:
+        print(f"\n{'=' * 40}\n STARTING TARGET: {target_city.upper()}\n{'=' * 40}")
+        city_listings = scrape_city(target_city, max_pages=25)
+        save_to_local_raw(target_city, city_listings)
+
+        time.sleep(random.uniform(5.0, 10.0))
+
+    raw_response = fetch_olx_page(city=target_city, offset=0, limit=40)
 
     # --- Debug block just in case ---
     if "errors" in raw_response:
@@ -131,4 +185,4 @@ if __name__ == "__main__":
             print(f"Skipping ad due to error: {err}")
 
     if cleaned_listings:
-        save_to_local_raw(city_to_scrape, cleaned_listings)
+        save_to_local_raw(target_city, cleaned_listings)

@@ -23,6 +23,7 @@ def parse_rooms(rooms_str):
     match = re.search(r"\d+", rooms_str)
     return int(match.group()) if match else None
 
+
 def parse_floor(floor_str):
     """'Parter' (ground floor) -> 0, otherwise numeric string -> int."""
     if not floor_str:
@@ -38,6 +39,24 @@ def parse_bool_pl(value_str):
     if value_str is None:
         return None
     return value_str.strip().lower() == "tak"
+
+
+MARKET_MAP = {
+    "pierwotny": "primary",
+    "wtórny": "secondary",
+}
+
+
+def parse_market(market_str):
+    """'Pierwotny'/'Wtórny' -> 'primary'/'secondary'"""
+    if not market_str:
+        return None
+    return MARKET_MAP.get(market_str.strip().lower())
+
+
+def parse_price_per_m(value_str):
+    """'6750 zł/m²' -> 6750.0"""
+    return _parse_leading_number(value_str) if value_str else None
 
 
 def extract_params(params_list):
@@ -59,26 +78,8 @@ def extract_params(params_list):
     return parsed
 
 
-MARKET_MAP = {
-    "pierwotny": "primary",
-    "wtórny": "secondary",
-}
-
-
-def parse_market(market_str):
-    """'Pierwotny'/'Wtórny' -> 'primary'/'secondary'"""
-    if not market_str:
-        return None
-    return MARKET_MAP.get(market_str.strip().lower())
-
-
-def parse_price_per_m(value_str):
-    """'6750 zł/m²' -> 6750.0"""
-    return _parse_leading_number(value_str) if value_str else None
-
-
 def clean_listing_data(item):
-    """Takes a raw GraphQL item, flattens it, and parses clean numeric fields."""
+    """Takes a raw GraphQL item, flattens it, and parses clean typed fields."""
     loc = item.get("location") or {}
     coords = item.get("map") or {}
 
@@ -102,11 +103,12 @@ def clean_listing_data(item):
 
     if isinstance(data.get("rooms"), str):
         data["num_rooms"] = parse_rooms(data["rooms"])
-        data["floor"] = parse_floor(data.get("floor_select"))
-        data["is_furnished"] = parse_bool_pl(data.get("furniture"))
-        data["building_type"] = data.get("builttype")
-        data["market_type"] = parse_market(data.get("market"))
-        data["price_per_sqm_listed"] = parse_price_per_m(data.get("price_per_m"))
-        # data["has_elevator"] = parse_bool_pl(data.get("winda"))
-        # data["allows_pets"] = parse_bool_pl(data.get("pets"))
+
+    # Independent of whether "rooms" was present on this listing
+    data["floor"] = parse_floor(data.get("floor_select"))
+    data["is_furnished"] = parse_bool_pl(data.get("furniture"))
+    data["building_type"] = data.get("builttype")
+    data["market_type"] = parse_market(data.get("market"))
+    data["price_per_sqm_listed"] = parse_price_per_m(data.get("price_per_m"))
+
     return data
