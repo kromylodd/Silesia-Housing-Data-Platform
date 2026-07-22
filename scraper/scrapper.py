@@ -6,11 +6,15 @@ import json
 from loader import save_to_local_raw
 from parser import clean_listing_data
 
-GRAPHQL_URL = "https://www.olx.pl/api/graphql"  # Note: OLX sometimes switches between /api/graphql and /apigateway/graphql
+GRAPHQL_URL = "https://www.olx.pl/apigateway/graphql"  # Note: OLX sometimes switches between /api/graphql and /apigateway/graphql
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Content-Type": "application/json"
+    "accept": "application/json",
+    "accept-language": "pl",
+    "content-type": "application/json",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "x-client": "DESKTOP",
+    "origin": "https://www.olx.pl",
 }
 
 # The brand new query you extracted! I trimmed the extra metadata fields
@@ -18,7 +22,6 @@ HEADERS = {
 QUERY = """
 query ListingSearchQuery(
   $searchParameters: [SearchParameter!] = []
-  $fetchPayAndShip: Boolean = false
   $searchOptions: SearchOptions
 ) {
   clientCompatibleListings(searchParameters: $searchParameters, searchOptions: $searchOptions) {
@@ -74,11 +77,11 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
                 {"key": "offset", "value": str(offset)},
                 {"key": "limit", "value": str(limit)},
                 {"key": "query", "value": city},
-                {"key": "category_id", "value": "1307"},
+                {"key": "category_id", "value": "14"},
                 {"key": "suggest_filters", "value": "true"}
             ],
-            "fetchPayAndShip": True,
             "searchOptions": None
+            # fetchPayAndShip removed — unused, caused GRAPHQL_VALIDATION_FAILED
         },
     }
 
@@ -101,6 +104,7 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
 
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
 
+
 if __name__ == "__main__":
     city_to_scrape = "katowice"
     print(f"Fetching data for {city_to_scrape}...")
@@ -119,6 +123,7 @@ if __name__ == "__main__":
     print(f"Found {len(raw_ads)} raw ads!")
 
     cleaned_listings = []
+
     for ad in raw_ads:
         try:
             cleaned_listings.append(clean_listing_data(ad))

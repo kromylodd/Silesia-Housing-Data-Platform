@@ -23,4 +23,4 @@ def save_to_local_raw(city, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Successfully saved {len(data)} listings to: {file_path}")
+    print(f"Successfully saved {len(data)} listings to: {file_path}")
