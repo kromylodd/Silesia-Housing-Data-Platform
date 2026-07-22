@@ -1,5 +1,28 @@
 import re
 
+def _parse_leading_number(value_str):
+    """Extracts and converts a leading numeric value like '48,5 m²' -> 48.5"""
+    if not value_str:
+        return None
+    match = re.search(r"([\d\s,.]+)", value_str)
+    if not match:
+        return None
+    cleaned = match.group(1).replace(" ", "").replace(",", ".")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def parse_rooms(rooms_str):
+    """Extracts room count from labels like '3 pokoje', '10 pokoi i więcej', 'kawalerka'."""
+    if not rooms_str:
+        return None
+    if "kawalerka" in rooms_str.lower():
+        return 1
+    match = re.search(r"\d+", rooms_str)
+    return int(match.group()) if match else None
+
 
 def extract_params(params_list):
     """Flattens the nested OLX params array into a flat dictionary."""
@@ -25,7 +48,6 @@ def clean_listing_data(item):
     loc = item.get("location") or {}
     coords = item.get("map") or {}
 
-    # Base dictionary mapping to your plan's schema
     data = {
         "id": item.get("id"),
         "url": item.get("url"),
@@ -38,36 +60,13 @@ def clean_listing_data(item):
         **extract_params(item.get("params"))
     }
 
-    # Parse square meters ("47 m²" -> 47.0)
-    if "m" in data and isinstance(data["m"], str):
-        match = re.search(r"([\d\s,.]+)", data["m"])
-        if match:
-            val_str = match.group(1).replace(" ", "").replace(",", ".")
-            try:
-                data["area_sqm"] = float(val_str)
-            except ValueError:
-                data["area_sqm"] = None
+    if isinstance(data.get("m"), str):
+        data["area_sqm"] = _parse_leading_number(data["m"])
 
-    # Parse additional rent ("860 zł" -> 860.0)
-    if "rent" in data and isinstance(data["rent"], str):
-        match = re.search(r"([\d\s,.]+)", data["rent"])
-        if match:
-            val_str = match.group(1).replace(" ", "").replace(",", ".")
-            try:
-                data["extra_rent_pln"] = float(val_str)
-            except ValueError:
-                data["extra_rent_pln"] = None
+    if isinstance(data.get("rent"), str):
+        data["extra_rent_pln"] = _parse_leading_number(data["rent"])
 
-    # Parse number of rooms ("3 pokoje" -> 3)
-    if "rooms" in data and isinstance(data["rooms"], str):
-        rooms_str = data["rooms"].lower()
-        if "1" in rooms_str or "kawalerka" in rooms_str:
-            data["num_rooms"] = 1
-        elif "2" in rooms_str:
-            data["num_rooms"] = 2
-        elif "3" in rooms_str:
-            data["num_rooms"] = 3
-        elif "4" in rooms_str:
-            data["num_rooms"] = 4
+    if isinstance(data.get("rooms"), str):
+        data["num_rooms"] = parse_rooms(data["rooms"])
 
     return data
