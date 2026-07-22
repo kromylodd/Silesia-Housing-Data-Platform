@@ -1,13 +1,8 @@
 import json
 import os
-import sys
-
 import pytest
 
-# Add parent directory (scraper/) to Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from ..parser import (
+from parser import (
     clean_listing_data,
     extract_params,
     parse_floor,
