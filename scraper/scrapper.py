@@ -1,7 +1,6 @@
 import time
 import random
 import requests
-import json
 
 from loader import save_to_local_raw
 from parser import clean_listing_data
@@ -162,27 +161,3 @@ if __name__ == "__main__":
         save_to_local_raw(target_city, city_listings)
 
         time.sleep(random.uniform(5.0, 10.0))
-
-    raw_response = fetch_olx_page(city=target_city, offset=0, limit=40)
-
-    # --- Debug block just in case ---
-    if "errors" in raw_response:
-        print("\n--- GRAPHQL ERROR ---")
-        print(json.dumps(raw_response["errors"], indent=2))
-        print("---------------------\n")
-
-    # The NEW path to extract ads based on your network sniffing
-    raw_ads = raw_response.get("data", {}).get("clientCompatibleListings", {}).get("data", [])
-
-    print(f"Found {len(raw_ads)} raw ads!")
-
-    cleaned_listings = []
-
-    for ad in raw_ads:
-        try:
-            cleaned_listings.append(clean_listing_data(ad))
-        except Exception as err:
-            print(f"Skipping ad due to error: {err}")
-
-    if cleaned_listings:
-        save_to_local_raw(target_city, cleaned_listings)
