@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 
 def _parse_leading_number(value_str):
     """Extracts and converts a leading numeric value like '48,5 m²' -> 48.5"""
@@ -88,6 +89,7 @@ def clean_listing_data(item):
         "url": item.get("url"),
         "title": item.get("title"),
         "created_time": item.get("created_time"),
+        "date_collected": datetime.now(timezone.utc).isoformat(),
         "city": loc.get("city", {}).get("name") if loc.get("city") else None,
         "district": loc.get("district", {}).get("name") if loc.get("district") else None,
         "latitude": coords.get("lat"),

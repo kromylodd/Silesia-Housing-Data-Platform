@@ -1,0 +1,21 @@
+{
+  "id": 1078049895,
+  "title": "Mieszkanie w klimatycznej dzielnicy Nikiszowiec",
+  "url": "https://www.olx.pl/d/oferta/mieszkanie-w-klimatycznej-dzielnicy-nikiszowiec-CID3-ID1aXo1x.html",
+  "created_time": "2026-06-05T17:58:39+02:00",
+  "location": {
+    "city": { "name": "Katowice" },
+    "district": { "name": "Janów-Nikiszowiec" }
+  },
+  "map": { "lat": 50.241127, "lon": 19.082426 },
+  "params": [
+    { "key": "price", "value": { "__typename": "PriceParam", "value": 391500, "currency": "PLN" } },
+    { "key": "m", "value": { "__typename": "GenericParam", "key": "m", "label": "58 m²" } },
+    { "key": "price_per_m", "value": { "__typename": "GenericParam", "key": "price_per_m", "label": "6750 zł/m²" } },
+    { "key": "floor_select", "value": { "__typename": "GenericParam", "key": "floor_select", "label": "Parter" } },
+    { "key": "furniture", "value": { "__typename": "GenericParam", "key": "furniture", "label": "Nie" } },
+    { "key": "market", "value": { "__typename": "GenericParam", "key": "market", "label": "Wtórny" } },
+    { "key": "builttype", "value": { "__typename": "GenericParam", "key": "builttype", "label": "Kamienica" } },
+    { "key": "rooms", "value": { "__typename": "GenericParam", "key": "rooms", "label": "2 pokoje" } }
+  ]
+}

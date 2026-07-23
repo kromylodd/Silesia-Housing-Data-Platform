@@ -22,3 +22,4 @@ data/
 *.csv
 gcp-key.json
 *.json
+!scraper/tests/*.json
