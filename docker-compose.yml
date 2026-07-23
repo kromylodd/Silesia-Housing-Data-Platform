@@ -1,0 +1,31 @@
+services:
+  airflow:
+    image: apache/airflow:2.10.4-python3.12
+    container_name: silesia-airflow
+    command: standalone
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+
+      # GCP auth — points at the key mounted below
+      GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/gcp-key.json
+
+      # Project-specific vars, pulled from terraform output in step 2.2
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_REGION: europe-central2
+      GCS_BUCKET_RAW: silesia-housing-data-bucket
+      BQ_DATASET_RAW: ${BQ_DATASET_RAW}
+      BQ_DATASET_STAGING: ${BQ_DATASET_STAGING}
+      BQ_DATASET_MARTS: ${BQ_DATASET_MARTS}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/logs:/opt/airflow/logs
+      - ./scraper:/opt/airflow/scraper
+      - ${GCP_SA_KEY_PATH}:/opt/airflow/keys/gcp-key.json:ro
+    ports:
+      - "8080:8080"
+    user: "${AIRFLOW_UID:-50000}:0"

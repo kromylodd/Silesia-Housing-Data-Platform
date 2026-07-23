@@ -21,3 +21,7 @@ output "ingestion_sa_email" {
 output "dbt_sa_email" {
   value = google_service_account.dbt.email
 }
+
+output "project_id" {
+  value = var.project_id
+}
