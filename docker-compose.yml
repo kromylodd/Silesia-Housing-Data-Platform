@@ -47,7 +47,7 @@ services:
       - |
         set -e
         if ! whoami &> /dev/null; then
-        echo 'airflow:x:'$(id -u)':0:airflow:/home/airflow:/bin/bash' >> /etc/passwd
+          echo 'airflow:x:'$(id -u)':0:airflow:/home/airflow:/bin/bash' >> /etc/passwd
         fi
         export HOME=/home/airflow
         airflow db migrate
