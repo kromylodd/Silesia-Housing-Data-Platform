@@ -5,7 +5,7 @@ from datetime import datetime
 import sys
 sys.path.insert(0, "/opt/airflow/scraper")
 
-from scrapper_1 import scrape_city
+from scrapper import scrape_city
 from loader import save_to_local_raw
 
 TARGET_CITIES = ["katowice", "gliwice", "zabrze", "bytom", "chorzow", "tychy", "sosnowiec", "bielsko-biala"]
