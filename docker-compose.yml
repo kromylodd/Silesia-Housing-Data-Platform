@@ -41,11 +41,16 @@ services:
       - ./scraper:/opt/airflow/scraper
       - ./keys:/opt/airflow/keys:ro
     entrypoint: /bin/bash
-    command: >
-      -c "airflow db migrate &&
-          airflow users create --username ${_AIRFLOW_WWW_USER_USERNAME}
-          --password ${_AIRFLOW_WWW_USER_PASSWORD} --firstname Admin
-          --lastname User --role Admin --email admin@example.com"
+    command:
+      - -c
+      - |
+        set -e
+        if ! whoami &> /dev/null; then
+        echo 'airflow:x:'$(id -u)':0:airflow:/home/airflow:/bin/bash' >> /etc/passwd
+        fi
+        export HOME=/home/airflow
+        airflow db migrate
+        airflow users create --username ${_AIRFLOW_WWW_USER_USERNAME} --password ${_AIRFLOW_WWW_USER_PASSWORD} --firstname Admin --lastname User --role Admin --email admin@example.com
     user: "${AIRFLOW_UID}:0"
 
   airflow-webserver:
