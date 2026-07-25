@@ -1,5 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.exceptions import AirflowSkipException
+from airflow.models.param import Param
 from datetime import datetime
 
 import sys
@@ -15,6 +17,9 @@ from bq_loader import load_city_to_bigquery
 TARGET_CITIES = ["katowice", "gliwice", "zabrze", "bytom", "chorzow", "tychy", "sosnowiec", "bielsko-biala"]
 
 def run_scrape_city(city, **kwargs):
+    selected = kwargs["params"].get("cities") or TARGET_CITIES
+    if city not in selected:
+        raise AirflowSkipException(f"{city} not in requested cities: {selected}")
     data = scrape_city(city, max_pages=25)
     save_to_local_raw(city, data)
 
@@ -36,6 +41,15 @@ with DAG(
     schedule="@daily",
     catchup=False,
     tags=["silesia", "housing"],
+    params={
+        "cities": Param(
+            default=TARGET_CITIES,
+            type="array",
+            title="Cities to run",
+            description='Trim to a subset, e.g. ["katowice"], to run one city only. '
+                        "Other cities' task chains still appear in the graph but show as skipped.",
+        ),
+    },
 ) as dag:
     for city in TARGET_CITIES:
         scrape_task = PythonOperator(
