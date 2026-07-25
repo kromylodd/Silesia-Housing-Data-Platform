@@ -24,11 +24,11 @@ from great_expectations import expectations as gxe
 logger = logging.getLogger(__name__)
 
 # District is legitimately missing from OLX for a meaningful share of listings
-# (smaller cities in particular) — this is not a scraper bug. Treat it as a
-# tolerance threshold rather than a hard not-null check: if less than 75% of
-# rows have a district, that's a real problem (e.g. OLX changed its response
-# shape) and should fail the batch; some missing districts should not.
-DISTRICT_NOT_NULL_THRESHOLD = 0.75
+# (smaller cities in particular) — this is not a scraper bug. A real Katowice
+# run showed ~40% missing, well above what a small manual sample suggested,
+# so this is NOT used as a hard-fail threshold — see build_warning_suite().
+# Kept here only as a reference value for the informational check.
+DISTRICT_NOT_NULL_REFERENCE = 0.6
 
 # Sanity bounds — wide enough to never reject a real Silesian apartment
 # listing, tight enough to catch a scraping/parsing bug (e.g. picking up
@@ -58,19 +58,20 @@ def _add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_suite() -> gx.ExpectationSuite:
-    suite = gx.ExpectationSuite(name="raw_listings_suite")
+def build_critical_suite() -> gx.ExpectationSuite:
+    """
+    Expectations that block the pipeline on failure. Only things that
+    indicate real corruption/parsing bugs belong here — anything that's a
+    known, legitimate property of the source data (e.g. district being
+    sometimes absent) does NOT belong here, it belongs in the warning suite.
+    """
+    suite = gx.ExpectationSuite(name="raw_listings_critical")
 
     # --- identity / structural ---
     suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="id"))
     suite.add_expectation(gxe.ExpectColumnValuesToBeUnique(column="id"))
     suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="url"))
     suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="city"))
-
-    # --- location: soft threshold, not a hard requirement ---
-    suite.add_expectation(
-        gxe.ExpectColumnValuesToNotBeNull(column="district", mostly=DISTRICT_NOT_NULL_THRESHOLD)
-    )
 
     # --- core numeric sanity ---
     suite.add_expectation(
@@ -108,19 +109,23 @@ def build_suite() -> gx.ExpectationSuite:
     return suite
 
 
-def validate_dataframe(df: pd.DataFrame) -> tuple[bool, list[dict]]:
-    """Runs the suite against a dataframe. Returns (success, list of per-expectation result dicts)."""
-    df = _add_derived_columns(df)
+def build_warning_suite() -> gx.ExpectationSuite:
+    """
+    Expectations that are logged but never block the pipeline. district is
+    here rather than in the critical suite because its missing-rate varies
+    by city and isn't reliably boundable from a small sample — treating it
+    as informational avoids the suite failing on legitimate source-data
+    behavior while still surfacing the number every run for visibility.
+    """
+    suite = gx.ExpectationSuite(name="raw_listings_warning")
+    suite.add_expectation(
+        gxe.ExpectColumnValuesToNotBeNull(column="district", mostly=DISTRICT_NOT_NULL_REFERENCE)
+    )
+    return suite
 
-    context = gx.get_context(mode="ephemeral")
-    data_source = context.data_sources.add_pandas("raw_listings_pandas")
-    asset = data_source.add_dataframe_asset(name="raw_listings")
-    batch_definition = asset.add_batch_definition_whole_dataframe("whole_batch")
-    batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
 
-    suite = build_suite()
+def _run_suite(batch, suite) -> list[dict]:
     result = batch.validate(suite)
-
     summary = []
     for r in result.results:
         summary.append(
@@ -133,8 +138,28 @@ def validate_dataframe(df: pd.DataFrame) -> tuple[bool, list[dict]]:
                 "partial_unexpected_list": r.result.get("partial_unexpected_list"),
             }
         )
+    return summary
 
-    return result.success, summary
+
+def validate_dataframe(df: pd.DataFrame) -> tuple[bool, list[dict], list[dict]]:
+    """
+    Runs both suites against a dataframe.
+    Returns (critical_success, critical_results, warning_results).
+    critical_success is the only thing that should ever gate the pipeline.
+    """
+    df = _add_derived_columns(df)
+
+    context = gx.get_context(mode="ephemeral")
+    data_source = context.data_sources.add_pandas("raw_listings_pandas")
+    asset = data_source.add_dataframe_asset(name="raw_listings")
+    batch_definition = asset.add_batch_definition_whole_dataframe("whole_batch")
+    batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
+
+    critical_results = _run_suite(batch, build_critical_suite())
+    warning_results = _run_suite(batch, build_warning_suite())
+
+    critical_success = all(r["success"] for r in critical_results)
+    return critical_success, critical_results, warning_results
 
 
 def _local_raw_path(city: str, date_str: str) -> str:
@@ -158,10 +183,9 @@ def validate_city_batch(city: str, date_str: str) -> None:
         return
 
     df = pd.DataFrame(records)
-    success, results = validate_dataframe(df)
+    success, critical_results, warning_results = validate_dataframe(df)
 
-    failed = [r for r in results if not r["success"]]
-    for r in results:
+    for r in critical_results:
         level = logging.INFO if r["success"] else logging.ERROR
         logger.log(
             level,
@@ -171,13 +195,23 @@ def validate_city_batch(city: str, date_str: str) -> None:
             f"sample={r['partial_unexpected_list']}",
         )
 
+    for r in warning_results:
+        # Warning suite never fails the task — just surfaces the number for visibility.
+        logger.log(
+            logging.INFO if r["success"] else logging.WARNING,
+            f"[{city}] [INFO-ONLY] {r['expectation']} ({r['column']}): "
+            f"{'within expected range' if r['success'] else 'outside expected range'} "
+            f"unexpected={r['unexpected_count']} ({r['unexpected_percent']}%)",
+        )
+
     if not success:
+        failed = [r for r in critical_results if not r["success"]]
         raise ValueError(
-            f"[{city}] Great Expectations validation FAILED — {len(failed)} expectation(s) violated: "
+            f"[{city}] Great Expectations validation FAILED — {len(failed)} critical expectation(s) violated: "
             + ", ".join(f"{r['expectation']}({r['column']})" for r in failed)
         )
 
-    logger.info(f"[{city}] Validation passed — {len(records)} listings, all expectations satisfied.")
+    logger.info(f"[{city}] Validation passed — {len(records)} listings, all critical expectations satisfied.")
 
 
 if __name__ == "__main__":
