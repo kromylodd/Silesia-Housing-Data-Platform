@@ -39,6 +39,7 @@ services:
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/logs:/opt/airflow/logs
       - ./scraper:/opt/airflow/scraper
+      - ./great_expectations:/opt/airflow/great_expectations
       - ./keys:/opt/airflow/keys:ro
       - ./data:/opt/airflow/data
     entrypoint: /bin/bash

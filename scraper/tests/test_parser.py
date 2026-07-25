@@ -57,10 +57,15 @@ def test_clean_listing_data_rental(rental_listing):
 
     assert cleaned["num_rooms"] == 2
     assert isinstance(cleaned["num_rooms"], int)
+    assert cleaned["rooms_capped"] is False
 
     # Sale-only fields must be None here — this fixture has no market/price_per_m
     assert cleaned["market_type"] is None
     assert cleaned["price_per_sqm_listed"] is None
+
+    # Raw/intermediate label fields should not leak into the cleaned output
+    for raw_key in ("m", "rent", "rooms", "floor_select", "furniture", "market", "builttype", "price_per_m"):
+        assert raw_key not in cleaned
 
 
 def test_clean_listing_missing_fields():
@@ -74,6 +79,8 @@ def test_clean_listing_missing_fields():
     assert cleaned.get("num_rooms") is None
     assert cleaned.get("floor") is None
     assert cleaned.get("market_type") is None
+    assert cleaned.get("rooms_capped") is False
+    assert cleaned.get("floor_capped") is False
 
 
 # --- sale fixture, end-to-end (this is the MVP target category) ---
@@ -90,6 +97,7 @@ def test_clean_listing_data_sale(sale_listing):
     assert cleaned["building_type"] == "Kamienica"
     assert cleaned["is_furnished"] is False
     assert cleaned["floor"] == 0  # "Parter" -> ground floor
+    assert cleaned["floor_capped"] is False
 
     assert cleaned["price_per_sqm_listed"] == 6750.0
 
@@ -104,15 +112,22 @@ def test_sale_price_per_sqm_matches_computed_price(sale_listing):
 # --- individual parser unit tests ---
 
 def test_parse_floor_ground_floor():
-    assert parse_floor("Parter") == 0
+    assert parse_floor("Parter") == (0, False)
 
 
 def test_parse_floor_numeric():
-    assert parse_floor("9") == 9
+    assert parse_floor("9") == (9, False)
 
 
 def test_parse_floor_missing():
-    assert parse_floor(None) is None
+    assert parse_floor(None) == (None, False)
+
+
+def test_parse_floor_capped():
+    """'Powyżej 10' (above 10) is a topcoded bucket, not an exact floor."""
+    floor, is_capped = parse_floor("Powyżej 10")
+    assert floor == 10
+    assert is_capped is True
 
 
 def test_parse_bool_pl():
@@ -134,8 +149,23 @@ def test_parse_price_per_m():
 
 
 def test_parse_rooms_double_digit():
-    assert parse_rooms("10 pokoi i więcej") == 10
+    rooms, is_capped = parse_rooms("10 pokoi i więcej")
+    assert rooms == 10
+    assert is_capped is True
 
 
 def test_parse_rooms_kawalerka():
-    assert parse_rooms("Kawalerka") == 1
+    assert parse_rooms("Kawalerka") == (1, False)
+
+
+def test_parse_rooms_capped_four_plus():
+    """OLX's real top bucket — '4 i więcej' means 4-or-more, not exactly 4."""
+    rooms, is_capped = parse_rooms("4 i więcej")
+    assert rooms == 4
+    assert is_capped is True
+
+
+def test_parse_rooms_exact_not_capped():
+    rooms, is_capped = parse_rooms("3 pokoje")
+    assert rooms == 3
+    assert is_capped is False
