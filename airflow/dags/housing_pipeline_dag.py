@@ -10,6 +10,7 @@ from scrapper import scrape_city
 from loader import save_to_local_raw
 from gcs_uploader import upload_city_listings_to_gcs
 from validate_batch import validate_city_batch
+from bq_loader import load_city_to_bigquery
 
 TARGET_CITIES = ["katowice", "gliwice", "zabrze", "bytom", "chorzow", "tychy", "sosnowiec", "bielsko-biala"]
 
@@ -24,6 +25,10 @@ def run_validate_city(city, **kwargs):
 def run_upload_city(city, **kwargs):
     execution_date = kwargs["ds"]  # Airflow's logical date, format YYYY-MM-DD
     upload_city_listings_to_gcs(city, date_str=execution_date)
+
+def run_load_city(city, **kwargs):
+    execution_date = kwargs["ds"]
+    load_city_to_bigquery(city, date_str=execution_date)
 
 with DAG(
     dag_id="housing_pipeline",
@@ -51,4 +56,10 @@ with DAG(
             op_kwargs={"city": city},
         )
 
-        scrape_task >> validate_task >> upload_task
+        load_task = PythonOperator(
+            task_id=f"load_bq_{city}",
+            python_callable=run_load_city,
+            op_kwargs={"city": city},
+        )
+
+        scrape_task >> validate_task >> upload_task >> load_task
