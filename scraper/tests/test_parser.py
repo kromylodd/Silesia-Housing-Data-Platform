@@ -1,12 +1,12 @@
 import json
 import os
-import pytest
 
+import pytest
 from parser import (
     clean_listing_data,
     extract_params,
-    parse_floor,
     parse_bool_pl,
+    parse_floor,
     parse_market,
     parse_price_per_m,
     parse_rooms,
@@ -33,6 +33,7 @@ def sale_listing():
 
 # --- extract_params ---
 
+
 def test_extract_params(rental_listing):
     params = extract_params(rental_listing.get("params"))
     assert params.get("price") == 2500
@@ -41,6 +42,7 @@ def test_extract_params(rental_listing):
 
 
 # --- rental fixture, end-to-end ---
+
 
 def test_clean_listing_data_rental(rental_listing):
     cleaned = clean_listing_data(rental_listing)
@@ -64,7 +66,16 @@ def test_clean_listing_data_rental(rental_listing):
     assert cleaned["price_per_sqm_listed"] is None
 
     # Raw/intermediate label fields should not leak into the cleaned output
-    for raw_key in ("m", "rent", "rooms", "floor_select", "furniture", "market", "builttype", "price_per_m"):
+    for raw_key in (
+        "m",
+        "rent",
+        "rooms",
+        "floor_select",
+        "furniture",
+        "market",
+        "builttype",
+        "price_per_m",
+    ):
         assert raw_key not in cleaned
 
 
@@ -84,6 +95,7 @@ def test_clean_listing_missing_fields():
 
 
 # --- sale fixture, end-to-end (this is the MVP target category) ---
+
 
 def test_clean_listing_data_sale(sale_listing):
     cleaned = clean_listing_data(sale_listing)
@@ -110,6 +122,7 @@ def test_sale_price_per_sqm_matches_computed_price(sale_listing):
 
 
 # --- individual parser unit tests ---
+
 
 def test_parse_floor_ground_floor():
     assert parse_floor("Parter") == (0, False)

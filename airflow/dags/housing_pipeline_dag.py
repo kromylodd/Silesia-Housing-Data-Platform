@@ -1,20 +1,32 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.exceptions import AirflowSkipException
-from airflow.models.param import Param
+import sys
 from datetime import datetime
 
-import sys
+from airflow.exceptions import AirflowSkipException
+from airflow.models.param import Param
+from airflow.operators.python import PythonOperator
+
+from airflow import DAG
+
 sys.path.insert(0, "/opt/airflow/scraper")
 sys.path.insert(0, "/opt/airflow/great_expectations")
 
-from scrapper import scrape_city
-from loader import save_to_local_raw
-from gcs_uploader import upload_city_listings_to_gcs
-from validate_batch import validate_city_batch
 from bq_loader import load_city_to_bigquery
+from gcs_uploader import upload_city_listings_to_gcs
+from loader import save_to_local_raw
+from scrapper import scrape_city
+from validate_batch import validate_city_batch
 
-TARGET_CITIES = ["katowice", "gliwice", "zabrze", "bytom", "chorzow", "tychy", "sosnowiec", "bielsko-biala"]
+TARGET_CITIES = [
+    "katowice",
+    "gliwice",
+    "zabrze",
+    "bytom",
+    "chorzow",
+    "tychy",
+    "sosnowiec",
+    "bielsko-biala",
+]
+
 
 def run_scrape_city(city, **kwargs):
     selected = kwargs["params"].get("cities") or TARGET_CITIES
@@ -23,17 +35,21 @@ def run_scrape_city(city, **kwargs):
     data = scrape_city(city, max_pages=25)
     save_to_local_raw(city, data)
 
+
 def run_validate_city(city, **kwargs):
     execution_date = kwargs["ds"]
     validate_city_batch(city, date_str=execution_date)
+
 
 def run_upload_city(city, **kwargs):
     execution_date = kwargs["ds"]  # Airflow's logical date, format YYYY-MM-DD
     upload_city_listings_to_gcs(city, date_str=execution_date)
 
+
 def run_load_city(city, **kwargs):
     execution_date = kwargs["ds"]
     load_city_to_bigquery(city, date_str=execution_date)
+
 
 with DAG(
     dag_id="housing_pipeline",
@@ -47,7 +63,7 @@ with DAG(
             type="array",
             title="Cities to run",
             description='Trim to a subset, e.g. ["katowice"], to run one city only. '
-                        "Other cities' task chains still appear in the graph but show as skipped.",
+            "Other cities' task chains still appear in the graph but show as skipped.",
         ),
     },
 ) as dag:

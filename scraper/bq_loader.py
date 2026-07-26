@@ -11,13 +11,13 @@ BigQuery's raw layer mirrors what's actually sitting in the landing zone,
 not a local copy that could drift or get cleaned up independently.
 """
 
-import os
 import json
 import logging
+import os
 from datetime import datetime
 
-from google.cloud import storage, bigquery
 from google.api_core.exceptions import NotFound
+from google.cloud import bigquery, storage
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +68,14 @@ def _ensure_raw_table(bq_client, table_id):
         logger.info(f"Created {table_id} (partitioned on date_collected, clustered on source_city)")
 
 
-def load_city_to_bigquery(city, date_str=None, bucket_name=None, project_id=None,
-                           dataset_id=None, table_name="raw_apartment_listings"):
+def load_city_to_bigquery(
+    city,
+    date_str=None,
+    bucket_name=None,
+    project_id=None,
+    dataset_id=None,
+    table_name="raw_apartment_listings",
+):
     """
     Downloads a city's validated batch from GCS and appends it into
     raw_apartment_listings. Returns the number of rows loaded (0 if the
@@ -109,12 +115,15 @@ def load_city_to_bigquery(city, date_str=None, bucket_name=None, project_id=None
     load_job.result()  # blocks until done, raises on failure
 
     table = bq_client.get_table(table_id)
-    logger.info(f"[{city}] Loaded {load_job.output_rows} rows into {table_id}. Total rows now: {table.num_rows}")
+    logger.info(
+        f"[{city}] Loaded {load_job.output_rows} rows into {table_id}. Total rows now: {table.num_rows}"
+    )
     return load_job.output_rows
 
 
 if __name__ == "__main__":
     import sys
+
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     city_arg = sys.argv[1] if len(sys.argv) > 1 else "katowice"
     load_city_to_bigquery(city_arg)

@@ -3,7 +3,6 @@ import os
 import sys
 
 import pandas as pd
-import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from validate_batch import validate_dataframe
@@ -25,7 +24,7 @@ def _fails_on(results, expectation_type, column):
 def test_real_sample_batch_passes():
     """The actual transformed sample batch (18 real listings, ~17% missing district) should pass critical checks."""
     df = _load_fixture()
-    success, critical_results, warning_results = validate_dataframe(df)
+    success, critical_results, _warning_results = validate_dataframe(df)
     failed = [r for r in critical_results if not r["success"]]
     assert success, f"Unexpected critical failures on clean data: {failed}"
 
@@ -68,7 +67,9 @@ def test_price_per_sqm_mismatch_fails():
     df.loc[0, "price_per_sqm_listed"] = 500.0  # nowhere near price/area_sqm for that row
     success, critical_results, _ = validate_dataframe(df)
     assert not success
-    assert _fails_on(critical_results, "expect_column_values_to_be_between", "price_per_sqm_diff_pct")
+    assert _fails_on(
+        critical_results, "expect_column_values_to_be_between", "price_per_sqm_diff_pct"
+    )
 
 
 def test_rooms_capped_null_fails():
@@ -98,6 +99,7 @@ def test_invalid_market_type_fails():
 
 
 # --- district: warning-only, must NEVER affect critical success, at any missing rate ---
+
 
 def test_district_moderately_missing_does_not_block_pipeline():
     df = _load_fixture()

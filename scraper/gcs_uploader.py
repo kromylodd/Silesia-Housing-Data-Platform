@@ -1,7 +1,8 @@
-import os
 import json
 import logging
+import os
 from datetime import datetime
+
 from google.cloud import storage
 
 logger = logging.getLogger(__name__)
@@ -41,5 +42,6 @@ def upload_city_listings_to_gcs(city, date_str=None, bucket_name=None):
 
 if __name__ == "__main__":
     import sys
+
     city_arg = sys.argv[1] if len(sys.argv) > 1 else "katowice"
     upload_city_listings_to_gcs(city_arg)

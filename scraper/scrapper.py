@@ -1,7 +1,7 @@
-import time
 import random
-import requests
+import time
 
+import requests
 from loader import save_to_local_raw
 from parser import clean_listing_data
 
@@ -77,9 +77,9 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
                 {"key": "limit", "value": str(limit)},
                 {"key": "query", "value": city},
                 {"key": "category_id", "value": "14"},
-                {"key": "suggest_filters", "value": "true"}
+                {"key": "suggest_filters", "value": "true"},
             ],
-            "searchOptions": None
+            "searchOptions": None,
             # fetchPayAndShip removed — unused, caused GRAPHQL_VALIDATION_FAILED
         },
     }
@@ -96,9 +96,10 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
 
             return data
         except requests.RequestException as err:
-            wait = (2 ** attempt) + random.uniform(0, 1)
+            wait = (2**attempt) + random.uniform(0, 1)
             print(
-                f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s")
+                f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s"
+            )
             time.sleep(wait)
 
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
@@ -151,8 +152,14 @@ def scrape_city(city, max_pages=25):
 
 if __name__ == "__main__":
     TARGET_CITIES = [
-        "katowice", "gliwice", "zabrze", "bytom",
-        "chorzow", "tychy", "sosnowiec", "bielsko-biala"
+        "katowice",
+        "gliwice",
+        "zabrze",
+        "bytom",
+        "chorzow",
+        "tychy",
+        "sosnowiec",
+        "bielsko-biala",
     ]
 
     for target_city in TARGET_CITIES:

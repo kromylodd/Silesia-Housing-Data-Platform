@@ -17,8 +17,9 @@ import logging
 import os
 import sys
 
-import great_expectations as gx
 import pandas as pd
+
+import great_expectations as gx
 from great_expectations import expectations as gxe
 
 logger = logging.getLogger(__name__)
@@ -90,9 +91,13 @@ def build_critical_suite() -> gx.ExpectationSuite:
     # (ExpectColumnValuesToBeInSet alone would let a null slip through — GX treats
     # null as vacuously in-set by default — so a not-null check is required too.)
     suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="rooms_capped"))
-    suite.add_expectation(gxe.ExpectColumnValuesToBeInSet(column="rooms_capped", value_set=[True, False]))
+    suite.add_expectation(
+        gxe.ExpectColumnValuesToBeInSet(column="rooms_capped", value_set=[True, False])
+    )
     suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="floor_capped"))
-    suite.add_expectation(gxe.ExpectColumnValuesToBeInSet(column="floor_capped", value_set=[True, False]))
+    suite.add_expectation(
+        gxe.ExpectColumnValuesToBeInSet(column="floor_capped", value_set=[True, False])
+    )
 
     # --- categorical ---
     suite.add_expectation(
@@ -211,7 +216,9 @@ def validate_city_batch(city: str, date_str: str) -> None:
             + ", ".join(f"{r['expectation']}({r['column']})" for r in failed)
         )
 
-    logger.info(f"[{city}] Validation passed — {len(records)} listings, all critical expectations satisfied.")
+    logger.info(
+        f"[{city}] Validation passed — {len(records)} listings, all critical expectations satisfied."
+    )
 
 
 if __name__ == "__main__":

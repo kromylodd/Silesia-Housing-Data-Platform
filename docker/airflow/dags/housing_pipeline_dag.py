@@ -1,18 +1,31 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
+import sys
 from datetime import datetime
 
-import sys
+from airflow.operators.python import PythonOperator
+
+from airflow import DAG
+
 sys.path.insert(0, "/opt/airflow/scraper")
 
-from scrapper import scrape_city
 from loader import save_to_local_raw
+from scrapper import scrape_city
 
-TARGET_CITIES = ["katowice", "gliwice", "zabrze", "bytom", "chorzow", "tychy", "sosnowiec", "bielsko-biala"]
+TARGET_CITIES = [
+    "katowice",
+    "gliwice",
+    "zabrze",
+    "bytom",
+    "chorzow",
+    "tychy",
+    "sosnowiec",
+    "bielsko-biala",
+]
+
 
 def run_scrape_city(city, **kwargs):
     data = scrape_city(city, max_pages=25)
     save_to_local_raw(city, data)
+
 
 with DAG(
     dag_id="housing_pipeline",

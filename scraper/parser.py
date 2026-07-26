@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timezone
 
+
 def _parse_leading_number(value_str):
     """Extracts and converts a leading numeric value like '48,5 m²' -> 48.5"""
     if not value_str:
@@ -117,7 +118,7 @@ def clean_listing_data(item):
         "district": loc.get("district", {}).get("name") if loc.get("district") else None,
         "latitude": coords.get("lat"),
         "longitude": coords.get("lon"),
-        **extract_params(item.get("params"))
+        **extract_params(item.get("params")),
     }
 
     if isinstance(data.get("m"), str):
@@ -137,7 +138,16 @@ def clean_listing_data(item):
 
     # Drop raw/intermediate label fields now that typed equivalents exist —
     # keeping both is redundant and pushes messy Polish strings downstream.
-    for raw_key in ("m", "rent", "rooms", "floor_select", "furniture", "market", "builttype", "price_per_m"):
+    for raw_key in (
+        "m",
+        "rent",
+        "rooms",
+        "floor_select",
+        "furniture",
+        "market",
+        "builttype",
+        "price_per_m",
+    ):
         data.pop(raw_key, None)
 
     return data

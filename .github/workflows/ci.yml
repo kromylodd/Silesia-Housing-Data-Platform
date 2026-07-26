@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lint tools
+        run: pip install ruff black
+      - name: Ruff
+        run: ruff check .
+      - name: Black --check
+        run: black --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scraper deps
+        run: pip install -r scraper/requirements.txt
+      - name: Run scraper tests
+        run: pytest scraper/tests/ -v
+      - name: Install GE test deps
+        run: pip install great_expectations pandas pytest
+      - name: Run Great Expectations unit tests
+        run: pytest great_expectations/tests/ -v
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Airflow image
+        run: docker build -f docker/airflow/Dockerfile -t housing-airflow:ci .
+
+  dbt:
+    runs-on: ubuntu-latest
+    # Runs dbt build against the real BigQuery project, not an isolated
+    # CI sandbox — this repo only provisions one environment. Restricted to
+    # main so branches/PRs get fast lint+test feedback without touching
+    # production tables; every merge to main re-materializes them (this is
+    # effectively the "CD" half — dbt build IS the deploy step here).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dbt
+        run: pip install dbt-core dbt-bigquery
+      - name: Write GCP key
+        run: echo '${{ secrets.DBT_SA_KEY }}' > /tmp/dbt-key.json
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+      - name: dbt build
+        working-directory: dbt
+        run: dbt build
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+          GCP_PROJECT_ID: silesia-housing-data-platform
+          BQ_DATASET_STAGING: staging_housing
+          GCP_REGION: europe-central2
+          DBT_KEYFILE_PATH: /tmp/dbt-key.json
