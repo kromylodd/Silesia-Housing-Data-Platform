@@ -37,3 +37,4 @@ dbt/logs/
 terraform.tfvars
 *.tfvars
 !terraform.tfvars.exampleairflow/logs/
+.user.yml

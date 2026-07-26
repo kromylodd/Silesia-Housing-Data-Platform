@@ -2,7 +2,7 @@
 
 End-to-end data engineering pipeline for the residential real estate market in the Silesian Voivodeship, Poland. Built as a production-style portfolio project — not a tutorial — covering ingestion, orchestration, storage, transformation, data quality, infrastructure-as-code, and analytics.
 
-**Status: raw ingestion pipeline complete and running end-to-end.** Scraper → Great Expectations validation → GCS raw landing zone → BigQuery raw table are all built, deployed via Docker/Terraform, and orchestrated through a daily Airflow DAG. Transformation (dbt), CI/CD, and the dashboard layer are next — see [Roadmap](#roadmap).
+**Status: raw ingestion pipeline complete and running end-to-end; dbt staging layer built and tested.** Scraper → Great Expectations validation → GCS raw landing zone → BigQuery raw table → dbt `stg_listings` are all built and verified against live data. Dimensional modeling (star schema), CI/CD, and the dashboard layer are next — see [Roadmap](#roadmap).
 
 ## Motivation
 
@@ -22,7 +22,9 @@ Most portfolio ETL projects stop at "scrape + dump to CSV." This one is built th
 | GCS raw landing zone | ✅ Done |
 | Airflow DAG (scrape → validate → upload → load, daily, per-city selective run) | ✅ Done |
 | BigQuery raw table (`raw_apartment_listings`, partitioned + clustered) | ✅ Done |
-| dbt models (staging → star schema → marts) | ⬜ Not started |
+| dbt staging layer (`stg_listings` — dedup, city standardization, sanity filters) | ✅ Done |
+| dbt dimensional model (dims + `fact_apartments`) | ⬜ Not started |
+| dbt marts (price stats, city/district summaries, market trends) | ⬜ Not started |
 | dbt snapshots (price history) | ⬜ Not started |
 | GitHub Actions CI | ⬜ Not started |
 | Power BI dashboard | ⬜ Not started |
@@ -55,7 +57,7 @@ GCS raw landing zone (gs://.../raw/{city}/{date}/listings.json)
    ↓
 BigQuery raw table (raw_apartment_listings — partitioned on date_collected, clustered on source_city)
    ↓
-dbt (staging → star schema → marts)   ← next up
+dbt staging (stg_listings — done) → star schema → marts   ← star schema next up
    ↓
 Power BI dashboard   ← planned
 ```
@@ -91,6 +93,11 @@ One `scrape → validate → upload → load_bq` chain per city, run daily. Expo
 
 ### Infrastructure (`terraform/`)
 Provisions the GCS raw bucket (90-day lifecycle rule — BigQuery is the source of truth post-load), three BigQuery datasets (`raw_housing`, `staging_housing`, `marts_housing`), and two service accounts with least-privilege IAM: an ingestion SA (`storage.objectAdmin` on the raw bucket, `bigquery.dataEditor` on raw + `bigquery.jobUser`) and a dbt SA (`dataViewer` on raw, `dataEditor` on staging/marts).
+
+### dbt staging layer (`dbt/`)
+`stg_listings` sits on top of the `raw_apartment_listings` source and produces one row per listing, deduplicated to its most recent scrape (`qualify row_number() over (partition by listing_id order by date_collected desc) = 1`) — same listing can recur across days since raw is append-only. Standardizes city names via a `city_lookup` seed keyed on `source_city` (the reliable scrape-target field, not OLX's noisy free-text `city`), and filters out-of-bounds price/area as a second, defensive gate on top of the GE checks already applied upstream. Backed by 11 dbt tests (`unique`/`not_null` on the surrogate + native keys, `accepted_values` on `city`/`market_type`, source freshness checks) — all passing against live data (2,610 listings across the 8 MVP cities as of last run).
+
+Custom `generate_schema_name` macro makes each layer's `+schema` config map to its Terraform-provisioned dataset exactly (`staging_housing`, `marts_housing`) instead of dbt's default behavior of appending it as a suffix to the target dataset.
 
 ### Tests
 - `scraper/tests/` — unit tests for both rental and sale listing shapes, individual field parsers, and the price/m² cross-check.
@@ -151,10 +158,22 @@ housing-data-platform/
 │   ├── bigquery.tf           # raw / staging / marts datasets
 │   ├── apis.tf
 │   └── iam.tf                 # ingestion + dbt service accounts
+├── dbt/
+│   ├── dbt_project.yml
+│   ├── profiles.yml           # connection config only — values from env_var(), no secrets committed
+│   ├── packages.yml           # dbt_utils (surrogate keys)
+│   ├── macros/
+│   │   └── get_custom_schema.sql
+│   ├── seeds/
+│   │   └── city_lookup.csv    # source_city slug → standardized display name
+│   └── models/staging/
+│       ├── _staging__sources.yml
+│       ├── _staging__models.yml
+│       └── stg_listings.sql
 └── keys/                     # gitignored — service account key files
 ```
 
-`dbt/`, `.github/workflows/`, and `dashboards/` will be added as those layers are built.
+`dbt/models/marts/`, `.github/workflows/`, and `dashboards/` will be added as those layers are built.
 
 ## Running Locally
 
@@ -169,11 +188,24 @@ docker compose up -d
 
 # 3. Open the Airflow UI at localhost:8080, trigger `housing_pipeline`
 #    (optionally trim the `cities` param to run a subset)
+
+# 4. Run dbt (separate Python env — dbt isn't in the Airflow container yet)
+python3 -m venv ~/venvs/housing-dbt && source ~/venvs/housing-dbt/bin/activate
+pip install dbt-core dbt-bigquery
+cd dbt
+export DBT_PROFILES_DIR=$(pwd)
+export GCP_PROJECT_ID=<your-project-id>
+export BQ_DATASET_STAGING=staging_housing
+export GCP_REGION=europe-central2
+export DBT_KEYFILE_PATH=../keys/dbt-key.json   # housing-dbt-sa key — see terraform/iam.tf
+dbt deps && dbt seed && dbt run && dbt test
 ```
 
 ## Roadmap
 
-- dbt: `stg_listings` (dedup, city-name standardization, impossible price/area filtering) → dimension + fact tables → marts
+- ~~dbt: `stg_listings` (dedup, city-name standardization, impossible price/area filtering)~~ ✅ done
+- dbt dimensional model: `dim_city`, `dim_district`, `dim_building_type`, `dim_market`, `dim_date` → `fact_apartments`
+- dbt marts: price statistics, city/district summaries, market trends
 - dbt snapshots for price-change history
 - GitHub Actions CI (lint, test, dbt build/test, GE checkpoint)
 - Power BI dashboard
