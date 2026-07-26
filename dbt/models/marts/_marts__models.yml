@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: dim_city
+    description: One row per MVP city.
+    columns:
+      - name: city_key
+        tests: [unique, not_null]
+      - name: city
+        tests: [not_null]
+
+  - name: dim_district
+    description: One row per (city, district) pair. district is 'Unknown' where OLX didn't supply one.
+    columns:
+      - name: district_key
+        tests: [unique, not_null]
+      - name: city
+        tests: [not_null]
+      - name: district
+        tests: [not_null]
+
+  - name: dim_building_type
+    description: One row per distinct building_type value, including 'Unknown'.
+    columns:
+      - name: building_type_key
+        tests: [unique, not_null]
+
+  - name: dim_market
+    description: One row per market_type value (primary/secondary/Unknown).
+    columns:
+      - name: market_key
+        tests: [unique, not_null]
+
+  - name: dim_date
+    description: Day-grain date spine, 2025-01-01 through one year past current_date.
+    columns:
+      - name: date_key
+        tests: [unique, not_null]
+      - name: date_day
+        tests: [unique, not_null]
+
+  - name: fact_apartments
+    description: >
+      One row per listing (current-state grain, same as stg_listings — price
+      history isn't tracked here, that's the job of the planned dbt snapshot).
+    columns:
+      - name: listing_key
+        tests:
+          - unique
+          - not_null
+      - name: city_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_key
+      - name: district_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_district')
+                field: district_key
+      - name: building_type_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_building_type')
+                field: building_type_key
+      - name: market_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_market')
+                field: market_key
+      - name: date_collected_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: date_published_key
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+              config:
+                where: "date_published_key is not null"
+      - name: price
+        tests: [not_null]
+      - name: area_sqm
+        tests: [not_null]
