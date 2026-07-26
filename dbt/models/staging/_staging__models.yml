@@ -1,0 +1,52 @@
+version: 2
+
+seeds:
+  - name: city_lookup
+    description: Seed mapping raw source_city slugs to standardized display names.
+
+models:
+  - name: stg_listings
+    description: >
+      One row per listing, deduplicated to its most recent scrape.
+      Historical price changes are tracked separately via dbt snapshots
+      (planned), not in this model.
+    columns:
+      - name: listing_key
+        description: Surrogate key (hash of listing_id). Use this for downstream joins.
+        tests:
+          - unique
+          - not_null
+
+      - name: listing_id
+        description: Native OLX listing ID.
+        tests:
+          - unique
+          - not_null
+
+      - name: city
+        description: Standardized city name (proper Polish diacritics), derived from source_city.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Katowice', 'Gliwice', 'Zabrze', 'Bytom', 'Chorzów', 'Tychy', 'Sosnowiec', 'Bielsko-Biała']
+
+      # district is intentionally NOT tested not_null — it's legitimately
+      # missing for a meaningful share of listings (see GE warning suite /
+      # DISTRICT_NOT_NULL_REFERENCE), not a data quality bug.
+
+      - name: price
+        tests:
+          - not_null
+
+      - name: area_sqm
+        tests:
+          - not_null
+
+      - name: market_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['primary', 'secondary']
+              config:
+                severity: warn  # not GE-gated upstream — don't hard-fail the build on it yet

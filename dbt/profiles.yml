@@ -1,0 +1,13 @@
+silesia_housing:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('BQ_DATASET_STAGING') }}"
+      keyfile: "{{ env_var('DBT_KEYFILE_PATH') }}"
+      location: "{{ env_var('GCP_REGION', 'europe-central2') }}"
+      threads: 4
+      job_execution_timeout_seconds: 300
+      job_retries: 1

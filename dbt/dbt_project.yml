@@ -1,0 +1,32 @@
+name: 'silesia_housing'
+version: '1.0.0'
+config-version: 2
+
+profile: 'silesia_housing'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# BQ_DATASET_STAGING is the profile's default target.schema (dataset). Marts
+# get their own dataset via the +schema config below — see
+# macros/get_custom_schema.sql for why that isn't just appended as a suffix.
+models:
+  silesia_housing:
+    staging:
+      +materialized: view
+      +schema: staging_housing
+    marts:
+      +materialized: table
+      +schema: marts_housing
+
+seeds:
+  silesia_housing:
+    +schema: staging_housing
