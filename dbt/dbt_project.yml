@@ -23,6 +23,16 @@ models:
     staging:
       +materialized: view
       +schema: staging_housing
+    models:
+      silesia_housing:
+        staging:
+          +materialized: view
+          +schema: staging_housing
+        intermediate:
+          +materialized: ephemeral
+        marts:
+          +materialized: table
+          +schema: marts_housing
     marts:
       +materialized: table
       +schema: marts_housing

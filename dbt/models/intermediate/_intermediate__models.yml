@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: int_listings_daily
+    description: >
+      Daily-grain listings (one row per listing_id per date_collected,
+      no dedup) — feeds mart_market_trends only. Ephemeral: not materialized
+      as its own table/view.
+    columns:
+      - name: listing_id
+        tests: [not_null]
+      - name: date_collected
+        tests: [not_null]
+      - name: price
+        tests: [not_null]
+      - name: area_sqm
+        tests: [not_null]
