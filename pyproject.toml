@@ -8,8 +8,8 @@ line-length = 100
 ignore = [
     # DTZ001/DTZ005 — naive datetime.now()/datetime() calls. Flagged in
     # scraper/loader.py, scraper/gcs_uploader.py, scraper/bq_loader.py,
-    # great_expectations/validate_batch.py and both housing_pipeline_dag.py
-    # copies. These are all local-partition-date / log-timestamp uses inside
+    # great_expectations/validate_batch.py and housing_pipeline_dag.py.
+    # These are all local-partition-date / log-timestamp uses inside
     # the Airflow container, which runs in UTC — making them tz-aware would
     # touch date-partitioning logic across the whole pipeline for no
     # behavioral gain. Real known debt, not silently ignored: tracked in
