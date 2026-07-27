@@ -227,7 +227,7 @@ Built in Power BI Desktop, connected to `marts_housing` in Import mode (`fact_ap
 
 A teal/gold Power BI theme is applied for consistent coloring across bars, lines, and the map.
 
-**Known limitation:** trend charts currently show only two days of real history (the Airflow scheduler runs inside Docker Compose on a personal machine rather than a continuously-available host, and the DAG's `catchup=False` means missed daily triggers aren't backfilled). Month-over-month/week-over-week growth measures return blank until more daily history accumulates — this is expected given the current deployment target, not a modeling bug.
+**Known limitation:** trend charts are still building up daily history (three days as of this writing) since the Airflow scheduler runs inside Docker Compose on a personal machine rather than a continuously-available host, and the DAG's `catchup=False` means missed daily triggers aren't backfilled. Month-over-month/week-over-week growth measures will stay blank until more daily history accumulates — this is expected given the current deployment target, not a modeling bug.
 
 ## Example SQL Queries
 
