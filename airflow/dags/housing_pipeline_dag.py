@@ -97,8 +97,10 @@ with DAG(
         scrape_task >> validate_task >> upload_task >> load_task
         load_bq_tasks.append(load_task)
 
-        dbt_build = BashOperator(
-            task_id="dbt_build",
-            bash_command="cd /opt/airflow/dbt && dbt build",
-        )
-        load_bq_tasks >> dbt_build
+    dbt_build = BashOperator(
+        task_id="dbt_build",
+        bash_command="cd /opt/airflow/dbt && dbt build",
+    )
+
+    # after building each city's scrape >> validate >> upload >> load_bq chain:
+    load_bq_tasks >> dbt_build  # load_bq_tasks = list of each city's final task
