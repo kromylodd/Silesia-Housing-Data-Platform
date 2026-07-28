@@ -33,8 +33,9 @@ def run_scrape_city(city, **kwargs):
     selected = kwargs["params"].get("cities") or TARGET_CITIES
     if city not in selected:
         raise AirflowSkipException(f"{city} not in requested cities: {selected}")
+    execution_date = kwargs["ds"]
     data = scrape_city(city, max_pages=25)
-    save_to_local_raw(city, data)
+    save_to_local_raw(city, data, date_str=execution_date)
 
 
 def run_validate_city(city, **kwargs):

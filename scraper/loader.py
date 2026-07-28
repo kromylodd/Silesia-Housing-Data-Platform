@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 
-def save_to_local_raw(city, data):
+def save_to_local_raw(city, data, date_str):
     """
     Saves parsed listings to a partitioned local directory simulating GCS.
     Path format: data/raw/{city}/{date}/listings.json
@@ -16,7 +16,7 @@ def save_to_local_raw(city, data):
 
     # Step out of 'scraper/' and into 'data/raw/'
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    folder_path = os.path.join(base_dir, "data", "raw", city, today)
+    folder_path = os.path.join(base_dir, "data", "raw", city, date_str)
 
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, "listings.json")
