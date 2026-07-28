@@ -101,6 +101,4 @@ with DAG(
             task_id="dbt_build",
             bash_command="cd /opt/airflow/dbt && dbt build",
         )
-
-        # after building each city's scrape >> validate >> upload >> load_bq chain:
-        load_bq_tasks >> dbt_build  # load_bq_tasks = list of each city's final task
+        load_bq_tasks >> dbt_build
