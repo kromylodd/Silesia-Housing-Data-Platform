@@ -3,10 +3,10 @@ from datetime import datetime
 
 from airflow.exceptions import AirflowSkipException
 from airflow.models.param import Param
+from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
 
 
 sys.path.insert(0, "/opt/airflow/scraper")
