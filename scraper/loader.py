@@ -12,8 +12,6 @@ def save_to_local_raw(city, data, date_str):
         print(f"No data to save for {city}.")
         return
 
-    today = datetime.now().strftime("%Y-%m-%d")
-
     # Step out of 'scraper/' and into 'data/raw/'
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     folder_path = os.path.join(base_dir, "data", "raw", city, date_str)
