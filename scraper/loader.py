@@ -1,6 +1,5 @@
 import json
 import os
-from datetime import datetime
 
 
 def save_to_local_raw(city, data, date_str):
