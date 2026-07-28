@@ -8,7 +8,6 @@ from airflow.operators.python import PythonOperator
 
 from airflow import DAG
 
-
 sys.path.insert(0, "/opt/airflow/scraper")
 sys.path.insert(0, "/opt/airflow/great_expectations")
 

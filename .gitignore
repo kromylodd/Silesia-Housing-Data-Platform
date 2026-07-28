@@ -29,6 +29,9 @@ gcp-key.json
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+dbt_packages/
+dbt_utils/
+# older dbt versions used dbt_modules/ — add that too if it exists
 
 # --- Terraform ---
 .terraform/
