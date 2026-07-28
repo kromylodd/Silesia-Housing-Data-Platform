@@ -6,6 +6,8 @@ from airflow.models.param import Param
 from airflow.operators.python import PythonOperator
 
 from airflow import DAG
+from airflow.operators.bash import BashOperator
+
 
 sys.path.insert(0, "/opt/airflow/scraper")
 sys.path.insert(0, "/opt/airflow/great_expectations")
@@ -67,6 +69,7 @@ with DAG(
         ),
     },
 ) as dag:
+    load_bq_tasks = []
     for city in TARGET_CITIES:
         scrape_task = PythonOperator(
             task_id=f"scrape_{city}",
@@ -93,3 +96,12 @@ with DAG(
         )
 
         scrape_task >> validate_task >> upload_task >> load_task
+        load_bq_tasks.append(load_task)
+
+        dbt_build = BashOperator(
+            task_id="dbt_build",
+            bash_command="cd /opt/airflow/dbt && dbt build",
+        )
+
+        # after building each city's scrape >> validate >> upload >> load_bq chain:
+        load_bq_tasks >> dbt_build   # load_bq_tasks = list of each city's final task

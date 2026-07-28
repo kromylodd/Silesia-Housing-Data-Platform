@@ -34,12 +34,14 @@ services:
       BQ_DATASET_RAW: ${BQ_DATASET_RAW}
       BQ_DATASET_STAGING: ${BQ_DATASET_STAGING}
       BQ_DATASET_MARTS: ${BQ_DATASET_MARTS}
+      DBT_KEYFILE_PATH: ${DBT_KEYFILE_PATH}
     volumes: &airflow-volumes
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/logs:/opt/airflow/logs
       - ./scraper:/opt/airflow/scraper
       - ./great_expectations:/opt/airflow/great_expectations
+      - ./dbt:/opt/airflow/dbt
       - ./keys:/opt/airflow/keys:ro
       - ./data:/opt/airflow/data
     entrypoint: /bin/bash
