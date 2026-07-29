@@ -5,6 +5,9 @@ locals {
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "serviceusage.googleapis.com",
+    "run.googleapis.com",              # NEW
+    "cloudscheduler.googleapis.com",   # NEW
+    "artifactregistry.googleapis.com", # NEW
   ]
 }
 

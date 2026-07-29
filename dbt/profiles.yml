@@ -1,12 +1,26 @@
 silesia_housing:
   target: dev
   outputs:
+    # Local dev / Airflow container: mounted static key.
     dev:
       type: bigquery
       method: service-account
       project: "{{ env_var('GCP_PROJECT_ID') }}"
       dataset: "{{ env_var('BQ_DATASET_STAGING') }}"
       keyfile: "{{ env_var('DBT_KEYFILE_PATH') }}"
+      location: "{{ env_var('GCP_REGION', 'europe-central2') }}"
+      threads: 4
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+
+    # Cloud Run Job: no key file in the image at all — picks up the
+    # attached service account (housing-batch-sa) via Application
+    # Default Credentials. Selected explicitly with `dbt build --target cloud_run`.
+    cloud_run:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('BQ_DATASET_STAGING') }}"
       location: "{{ env_var('GCP_REGION', 'europe-central2') }}"
       threads: 4
       job_execution_timeout_seconds: 300

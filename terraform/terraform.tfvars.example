@@ -1,3 +1,4 @@
 project_id      = "your-gcp-project-id"
 region          = "europe-central2"
 raw_bucket_name = "your-raw-landing-bucket-name"
+batch_job_image = "us-docker.pkg.dev/cloudrun/container/job:latest"  # bootstrap placeholder, see variables.tf

@@ -1,0 +1,7 @@
+google-cloud-storage
+google-cloud-bigquery
+requests
+pandas
+great_expectations==1.19.1
+dbt-core
+dbt-bigquery
