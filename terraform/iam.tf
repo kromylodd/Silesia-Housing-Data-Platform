@@ -139,3 +139,13 @@ resource "google_cloud_run_v2_job_iam_member" "ci_deploy_developer" {
   role     = "roles/run.developer"
   member   = "serviceAccount:${google_service_account.ci_deploy.email}"
 }
+
+# Required in addition to run.developer above: updating a Cloud Run Job
+# that runs as a specific service account (housing-batch-sa) means the
+# deploying identity must be allowed to "act as" that runtime SA — GCP
+# checks iam.serviceaccounts.actAs on every deploy, not just run.developer.
+resource "google_service_account_iam_member" "ci_deploy_can_act_as_batch" {
+  service_account_id = google_service_account.batch.name
+  role                = "roles/iam.serviceAccountUser"
+  member              = "serviceAccount:${google_service_account.ci_deploy.email}"
+}
