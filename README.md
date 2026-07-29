@@ -337,3 +337,4 @@ pytest tests/ -v
 
 This project scrapes only publicly available data for educational/portfolio purposes. It is not affiliated with OLX or Otodom.
 
+
