@@ -24,11 +24,11 @@ from datetime import datetime, timezone
 sys.path.insert(0, "/app/scraper")
 sys.path.insert(0, "/app/great_expectations")
 
-from bq_loader import load_city_to_bigquery  # noqa: E402
-from gcs_uploader import upload_city_listings_to_gcs  # noqa: E402
-from loader import save_to_local_raw  # noqa: E402
-from scrapper import scrape_city  # noqa: E402
-from validate_batch import validate_city_batch  # noqa: E402
+from bq_loader import load_city_to_bigquery
+from gcs_uploader import upload_city_listings_to_gcs
+from loader import save_to_local_raw
+from scrapper import scrape_city
+from validate_batch import validate_city_batch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
