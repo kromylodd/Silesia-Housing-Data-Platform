@@ -8,6 +8,7 @@ on:
       - "scraper/**"
       - "great_expectations/**"
       - "dbt/**"
+  workflow_dispatch: {}
 
 env:
   GCP_PROJECT_ID: silesia-housing-data-platform
