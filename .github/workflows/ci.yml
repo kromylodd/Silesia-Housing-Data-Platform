@@ -46,13 +46,11 @@ jobs:
 
   dbt:
     runs-on: ubuntu-latest
-    # Runs dbt build against the real BigQuery project, not an isolated
-    # CI sandbox — this repo only provisions one environment. Restricted to
-    # main so branches/PRs get fast lint+test feedback without touching
-    # production tables; every merge to main re-materializes them (this is
-    # effectively the "CD" half — dbt build IS the deploy step here).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, test]
+    needs: [ lint, test ]
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -60,8 +58,11 @@ jobs:
           python-version: "3.12"
       - name: Install dbt
         run: pip install dbt-core dbt-bigquery
-      - name: Write GCP key
-        run: echo '${{ secrets.DBT_SA_KEY }}' > /tmp/dbt-key.json
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: housing-dbt-sa@silesia-housing-data-platform.iam.gserviceaccount.com
       - name: dbt deps
         working-directory: dbt
         run: dbt deps
@@ -69,10 +70,9 @@ jobs:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       - name: dbt build
         working-directory: dbt
-        run: dbt build
+        run: dbt build --target cloud_run
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
           GCP_PROJECT_ID: silesia-housing-data-platform
           BQ_DATASET_STAGING: staging_housing
           GCP_REGION: europe-central2
-          DBT_KEYFILE_PATH: /tmp/dbt-key.json

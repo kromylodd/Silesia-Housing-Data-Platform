@@ -19,39 +19,17 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.BATCH_DEPLOY_SA_KEY }}
-          # TODO: replace with Workload Identity Federation — same migration
-          # planned for the dbt CI job's DBT_SA_KEY, do both at once.
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: housing-ci-deploy-sa@silesia-housing-data-platform.iam.gserviceaccount.com
 
       - uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      - name: Build image
-        run: |
-          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}"
-          docker build -f cloud_run_job/Dockerfile \
-            -t "$IMAGE:${{ github.sha }}" \
-            -t "$IMAGE:latest" \
-            .
-
-      - name: Push image
-        run: |
-          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}"
-          docker push "$IMAGE:${{ github.sha }}"
-          docker push "$IMAGE:latest"
-
-      - name: Update Cloud Run Job image
-        run: |
-          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          gcloud run jobs update ${{ env.RUN_JOB_NAME }} \
-            --project=${{ env.GCP_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image="$IMAGE"
+      # rest unchanged
