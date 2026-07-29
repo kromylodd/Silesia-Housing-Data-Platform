@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 
+logger = logging.getLogger(__name__)
 
 def save_to_local_raw(city, data, date_str):
     """
@@ -8,7 +10,7 @@ def save_to_local_raw(city, data, date_str):
     Path format: data/raw/{city}/{date}/listings.json
     """
     if not data:
-        print(f"No data to save for {city}.")
+        logger.warning(f"No data to save for {city}.")
         return
 
     # Step out of 'scraper/' and into 'data/raw/'
@@ -21,4 +23,4 @@ def save_to_local_raw(city, data, date_str):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    print(f"Successfully saved {len(data)} listings to: {file_path}")
+    logger.info(f"Successfully saved {len(data)} listings to: {file_path}")

@@ -5,6 +5,10 @@ import requests
 from loader import save_to_local_raw
 from parser import clean_listing_data
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 GRAPHQL_URL = "https://www.olx.pl/apigateway/graphql"  # Note: OLX sometimes switches between /api/graphql and /apigateway/graphql
 
 HEADERS = {
@@ -92,14 +96,12 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
 
             # Print any hidden GraphQL validation or runtime errors for debugging
             if "errors" in data:
-                print(f"[{city.upper()}] GraphQL Error response: {data['errors']}")
+                logger.error(f"[{city.upper()}] GraphQL error response: {data['errors']}")
 
             return data
         except requests.RequestException as err:
             wait = (2**attempt) + random.uniform(0, 1)
-            print(
-                f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s"
-            )
+            logger.warning(f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s")
             time.sleep(wait)
 
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
@@ -112,22 +114,22 @@ def scrape_city(city, max_pages=25):
 
     for page in range(max_pages):
         offset = page * limit
-        print(f"[{city.upper()}] Fetching page {page + 1} (offset: {offset})...")
+        logger.info(f"[{city.upper()}] Fetching page {page + 1} (offset: {offset})...")
 
         try:
             res_json = fetch_olx_page(city=city, offset=offset, limit=limit)
         except RuntimeError as err:
-            print(f"[{city.upper()}] Giving up: {err}")
+            logger.error(f"[{city.upper()}] Giving up: {err}")
             break
 
         if "errors" in res_json:
-            print(f"[{city.upper()}] GraphQL Error response: {res_json['errors']}")
+            logger.error(f"[{city.upper()}] GraphQL error response: {res_json['errors']}")
             break
 
         listings_data = res_json.get("data", {}).get("clientCompatibleListings", {})
 
         if listings_data.get("__typename") != "ListingSuccess":
-            print(f"[{city.upper()}] Non-success response: {listings_data}")
+            logger.error(f"[{city.upper()}] Non-success response: {listings_data}")
             break
 
         raw_items = listings_data.get("data", [])
@@ -138,7 +140,7 @@ def scrape_city(city, max_pages=25):
             try:
                 all_listings.append(clean_listing_data(item))
             except Exception as err:
-                print(f"[{city.upper()}] Skipping ad due to error: {err}")
+                logger.warning(f"[{city.upper()}] Skipping ad due to error: {err}")
 
         if len(raw_items) < limit:
             break  # last page reached
@@ -146,11 +148,16 @@ def scrape_city(city, max_pages=25):
         time.sleep(random.uniform(1.5, 3.5))
 
     unique_listings = list({item["id"]: item for item in all_listings}.values())
-    print(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
+    logger.info(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
     return unique_listings
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
     TARGET_CITIES = [
         "katowice",
         "gliwice",
@@ -163,7 +170,7 @@ if __name__ == "__main__":
     ]
 
     for target_city in TARGET_CITIES:
-        print(f"\n{'=' * 40}\n STARTING TARGET: {target_city.upper()}\n{'=' * 40}")
+        logger.info(f"STARTING TARGET: {target_city.upper()}")
         city_listings = scrape_city(target_city, max_pages=25)
         save_to_local_raw(target_city, city_listings)
 
