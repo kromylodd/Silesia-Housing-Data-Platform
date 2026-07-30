@@ -4,6 +4,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
+
 def save_to_local_raw(city, data, date_str):
     """
     Saves parsed listings to a partitioned local directory simulating GCS.

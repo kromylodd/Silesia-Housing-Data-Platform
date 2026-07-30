@@ -4,10 +4,10 @@ silesia_housing:
     # Local dev / Airflow container: mounted static key.
     dev:
       type: bigquery
-      method: service-account
+      method: oauth
+      impersonate_service_account: housing-dbt-sa@silesia-housing-data-platform.iam.gserviceaccount.com
       project: "{{ env_var('GCP_PROJECT_ID') }}"
       dataset: "{{ env_var('BQ_DATASET_STAGING') }}"
-      keyfile: "{{ env_var('DBT_KEYFILE_PATH') }}"
       location: "{{ env_var('GCP_REGION', 'europe-central2') }}"
       threads: 4
       job_execution_timeout_seconds: 300

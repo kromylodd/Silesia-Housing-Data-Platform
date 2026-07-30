@@ -101,7 +101,9 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
             return data
         except requests.RequestException as err:
             wait = (2**attempt) + random.uniform(0, 1)
-            logger.warning(f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s")
+            logger.warning(
+                f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s"
+            )
             time.sleep(wait)
 
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
