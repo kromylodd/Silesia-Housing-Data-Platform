@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 
@@ -5,7 +6,7 @@ import requests
 from loader import save_to_local_raw
 from parser import clean_listing_data
 
-import logging
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
