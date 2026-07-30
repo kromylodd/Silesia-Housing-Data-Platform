@@ -594,13 +594,24 @@ pytest tests/ -v
 
 ## Roadmap / Future Improvements
 
-- dbt snapshots for price-change history (type-2 tracking of price changes per listing over time)
-- Expansion to the full Silesian city list (Rybnik, Jaworzno, Dąbrowa Górnicza, Mysłowice, Siemianowice Śląskie, Żory, Czeladź, Piekary Śląskie, Świętochłowice)
-- Detail-page scraping (construction year, parking, balcony, elevator, seller/agency info) — deliberately deferred; MVP scope is search-results fields only
+**Stage 1 / Tier 2 (up next):**
+- Airflow `on_failure_callback` → Slack/Discord notification on dev-DAG failure
+- `dbt docs generate`, hosted on GitHub Pages
+- Incremental materialization for `fact_apartments`
+- README additions: architecture diagram, dashboard screenshots (partially added), example SQL queries (added), an honest known-limitations section
+
+**Stage 2 (after Tier 1/2 close out):**
+- Expansion to the full Silesian city list (Rybnik, Jaworzno, Dąbrowa Górnicza, Mysłowice, Siemianowice Śląskie, Żory, Czeladź, Piekary Śląskie, Świętochłowice) — top 30–40 by population, not the literal full list
+- Geo bounding-box validation per city (lat/lon), since `source_city` alone won't be enough to dedupe fuzzy-match noise at that scale
+- Async scraper with a global (not per-city) rate limit
+
+**Stage 3 (second portfolio project):**
+- "Polish IT Job Market Intelligence" — IT job postings/salary aggregation, star schema, NLP parsing of tech stacks from job descriptions
+
+**Deliberately out of scope (not committed roadmap items):**
+- Detail-page scraping (construction year, parking, balcony, elevator, seller/agency info) — MVP scope is search-results fields only
 - ML price prediction model
 - Geospatial analysis (distance to city center, schools, public transport; OpenStreetMap integration)
-- Continuous (cloud-hosted) Airflow scheduling so trend marts accumulate daily history instead of running on-demand
-
 ## Disclaimer
 
 This project scrapes only publicly available data for educational/portfolio purposes. It is not affiliated with OLX or Otodom.
