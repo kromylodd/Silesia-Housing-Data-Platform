@@ -143,7 +143,6 @@ housing-data-platform/
 │               mart_district_summary.sql / mart_market_trends.sql
 ├── .github/workflows/
 │   └── ci.yml                     # lint, test, docker-build, dbt build (4 jobs)
-└── keys/                          # gitignored — service account key files
 ```
 
 ## Pipeline Walkthrough
