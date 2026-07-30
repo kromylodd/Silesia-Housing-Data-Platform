@@ -4,8 +4,8 @@ import sys
 print("Running with interpreter:", sys.executable)
 
 import google.auth
-from google.auth import impersonated_credentials
 import google.auth.transport.requests
+from google.auth import impersonated_credentials
 
 source_credentials, project = google.auth.default(
     scopes=["https://www.googleapis.com/auth/cloud-platform"]
