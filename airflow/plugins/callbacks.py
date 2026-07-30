@@ -28,9 +28,7 @@ def notify_discord_on_failure(context):
 
     failed_tasks = []
     if dag_run:
-        failed_tasks = [
-            ti.task_id for ti in dag_run.get_task_instances() if ti.state == "failed"
-        ]
+        failed_tasks = [ti.task_id for ti in dag_run.get_task_instances() if ti.state == "failed"]
 
     message = (
         f"**Housing pipeline failed**\n"

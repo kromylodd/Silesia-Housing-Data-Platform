@@ -1,5 +1,6 @@
 # test_auth.py
 import sys
+
 print("Running with interpreter:", sys.executable)
 
 import google.auth
