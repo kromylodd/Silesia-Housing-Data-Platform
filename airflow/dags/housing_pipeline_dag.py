@@ -10,8 +10,10 @@ from airflow import DAG
 
 sys.path.insert(0, "/opt/airflow/scraper")
 sys.path.insert(0, "/opt/airflow/great_expectations")
+sys.path.insert(0, "/opt/airflow/plugins")
 
 from bq_loader import load_city_to_bigquery
+from callbacks import notify_discord_on_failure
 from gcs_uploader import upload_city_listings_to_gcs
 from loader import save_to_local_raw
 from scrapper import scrape_city
@@ -59,6 +61,7 @@ with DAG(
     schedule="@daily",
     catchup=False,
     tags=["silesia", "housing"],
+    on_failure_callback=notify_discord_on_failure,
     params={
         "cities": Param(
             default=TARGET_CITIES,

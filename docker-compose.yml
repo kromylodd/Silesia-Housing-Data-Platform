@@ -35,6 +35,7 @@ services:
       BQ_DATASET_STAGING: ${BQ_DATASET_STAGING}
       BQ_DATASET_MARTS: ${BQ_DATASET_MARTS}
       DBT_KEYFILE_PATH: ${DBT_KEYFILE_PATH}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
     volumes: &airflow-volumes
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins

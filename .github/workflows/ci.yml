@@ -76,3 +76,61 @@ jobs:
           GCP_PROJECT_ID: silesia-housing-data-platform
           BQ_DATASET_STAGING: staging_housing
           GCP_REGION: europe-central2
+
+  dbt-docs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ dbt ]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dbt
+        run: pip install dbt-core dbt-bigquery
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: housing-dbt-sa@silesia-housing-data-platform.iam.gserviceaccount.com
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+      # Runs after the dbt job's `dbt build` has already materialized the
+      # marts, so catalog.json (column types/row counts) reflects real
+      # tables in BigQuery, not just the compiled manifest.
+      - name: dbt docs generate
+        working-directory: dbt
+        run: dbt docs generate --target cloud_run
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+          GCP_PROJECT_ID: silesia-housing-data-platform
+          BQ_DATASET_STAGING: staging_housing
+          GCP_REGION: europe-central2
+      - name: Disable Jekyll processing
+        run: touch dbt/target/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dbt/target
+
+  deploy-docs:
+    runs-on: ubuntu-latest
+    needs: [ dbt-docs ]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
