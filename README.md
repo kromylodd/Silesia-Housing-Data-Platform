@@ -4,6 +4,7 @@ End-to-end data engineering pipeline for the residential real estate market in t
 
 [![CI](https://github.com/kromylodd/Silesia-Housing-Data-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kromylodd/Silesia-Housing-Data-Platform/actions/workflows/ci.yml)
 [![Deploy Batch Job](https://github.com/kromylodd/Silesia-Housing-Data-Platform/actions/workflows/deploy-batch-job.yml/badge.svg)](https://github.com/kromylodd/Silesia-Housing-Data-Platform/actions/workflows/deploy-batch-job.yml)
+[![dbt docs](https://img.shields.io/badge/dbt%20docs-live-success)](https://kromylodd.github.io/Silesia-Housing-Data-Platform/)
 
 **Status: MVP complete + Stage 1 / Tier 1 fully closed out.** Scraper → Great Expectations → GCS → BigQuery raw → dbt (staging → dims/fact → marts, snapshots, tests) → CI/CD (WIF) → Cloud Run + Cloud Scheduler (daily production run) → Power BI are all built, tested, and running against live data.
 
@@ -268,7 +269,7 @@ Plus standard schema tests (`unique`, `not_null`, `relationships`, `accepted_val
 
 Both workflows use **Workload Identity Federation** — static JSON service-account keys (`dbt-sa`, `batch-deploy-sa`) were deleted from GCP after the migration, and GitHub Actions authenticates via `google-github-actions/auth@v2` with a `workload_identity_provider`, with no key secret in the repo at all.
 
-**`.github/workflows/ci.yml`** — four jobs on every push/PR to `main`:
+**`.github/workflows/ci.yml`** — six jobs on every push/PR to `main`:
 
 | Job | What it does |
 |---|---|
@@ -276,6 +277,10 @@ Both workflows use **Workload Identity Federation** — static JSON service-acco
 | `test` | `pytest scraper/tests/` + `pytest great_expectations/tests/` |
 | `docker-build` | Builds the Airflow image from `docker/airflow/Dockerfile` |
 | `dbt` | `dbt build --target cloud_run` against real BigQuery, authenticated via WIF as `housing-dbt-sa`, `needs: [lint, test]`, push to `main` only |
+| `dbt-docs` | `dbt docs generate --target cloud_run`, `needs: [dbt]` so the catalog reflects tables the same run just (re)materialized; uploads the static site as a Pages artifact |
+| `deploy-docs` | Publishes that artifact to GitHub Pages via `actions/deploy-pages`, `needs: [dbt-docs]` |
+
+Live dbt docs (lineage graph, column-level descriptions, source freshness): **https://kromylodd.github.io/Silesia-Housing-Data-Platform/**
 
 **`.github/workflows/deploy-batch-job.yml`** — on push to `main` touching `cloud_run_job/`, `scraper/`, `great_expectations/`, or `dbt/`: builds the image, pushes it to Artifact Registry, and rolls out `gcloud run jobs update` under `housing-ci-deploy-sa` (needs both `roles/run.developer` on the job and `roles/iam.serviceAccountUser` on `housing-batch-sa` to `actAs` it).
 
@@ -615,5 +620,3 @@ pytest tests/ -v
 ## Disclaimer
 
 This project scrapes only publicly available data for educational/portfolio purposes. It is not affiliated with OLX or Otodom.
-
-
