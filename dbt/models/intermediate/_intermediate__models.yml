@@ -3,9 +3,11 @@ version: 2
 models:
   - name: int_listings_daily
     description: >
-      Daily-grain listings (one row per listing_id per date_collected,
-      no dedup) — feeds mart_market_trends only. Ephemeral: not materialized
-      as its own table/view.
+      Daily-grain listings — one row per listing_id per calendar day,
+      deduped to the latest scrape if that listing was scraped more than
+      once on the same day (e.g. a manually re-triggered run) — feeds
+      mart_market_trends only. Ephemeral: not materialized as its own
+      table/view.
     columns:
       - name: listing_id
         tests: [not_null]
