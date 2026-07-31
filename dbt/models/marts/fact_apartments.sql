@@ -9,7 +9,8 @@
 
 with listings as (
 
-    select * from {{ ref('stg_listings') }}
+    select *
+    from {{ ref('stg_listings') }} as src
 
     {% if is_incremental() %}
     -- stg_listings is a view that dedupes across the FULL raw_apartment_listings
@@ -23,7 +24,7 @@ with listings as (
     -- a city_lookup edit), already-loaded rows here won't be reprocessed by
     -- this filter. Run `dbt run --full-refresh -s fact_apartments` after such
     -- changes.
-    where cast(format_date('%Y%m%d', date(listings.date_collected)) as int64)
+    where cast(format_date('%Y%m%d', date(src.date_collected)) as int64)
         > (select coalesce(max(date_collected_key), 0) from {{ this }})
     {% endif %}
 
