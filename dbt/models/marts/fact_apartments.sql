@@ -1,6 +1,31 @@
+{{
+    config(
+        materialized='incremental',
+        unique_key='listing_key',
+        incremental_strategy='merge',
+        on_schema_change='sync_all_columns'
+    )
+}}
+
 with listings as (
 
     select * from {{ ref('stg_listings') }}
+
+    {% if is_incremental() %}
+    -- stg_listings is a view that dedupes across the FULL raw_apartment_listings
+    -- history on every query. As that table grows daily, a full-table rebuild
+    -- here would rescan all of it every run. This filter bounds the scan to
+    -- listings rescraped since this table's last successful load; merge then
+    -- inserts new listing_ids and updates existing ones in place - so scan
+    -- cost stays roughly flat as raw history grows, instead of growing with it.
+    --
+    -- NOTE: if stg_listings' dedup/mapping logic changes retroactively (e.g.
+    -- a city_lookup edit), already-loaded rows here won't be reprocessed by
+    -- this filter. Run `dbt run --full-refresh -s fact_apartments` after such
+    -- changes.
+    where cast(format_date('%Y%m%d', date(listings.date_collected)) as int64)
+        > (select coalesce(max(date_collected_key), 0) from {{ this }})
+    {% endif %}
 
 ),
 
