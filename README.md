@@ -61,7 +61,7 @@ Most portfolio ETL projects stop at "scrape and dump to CSV." This one is built 
 | GitHub Actions CD (image build + Cloud Run Job deploy on push to main) | ✅ Done |
 | **`dbt docs generate` published to GitHub Pages on every `main` push** | ✅ Done |
 | Power BI dashboard (2 pages, 12 DAX measures, ArcGIS map) | ✅ Done |
-| **Airflow `on_failure_callback` → Discord webhook** | ⚠️ Wired, not yet confirmed reliable — see [Known Limitations](#known-limitations--honest-caveats) |
+| **Airflow `on_failure_callback` → Discord webhook** | ✅ Done |
 | README rewrite (architecture diagram, screenshots, SQL examples, limitations) | ✅ Done (this update) |
 | Full Silesian city list expansion | ⬜ Not started (Stage 2) |
 
