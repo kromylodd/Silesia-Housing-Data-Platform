@@ -43,7 +43,13 @@ models:
     description: >
       One row per listing (current-state grain, same as stg_listings — a
       listing's price history isn't tracked here, that's the job of the
-      planned dbt snapshot). Grain: one row per listing_id.
+      dbt snapshot in snapshots_listings). Grain: one row per listing_id.
+      Materialized incrementally (merge on listing_key): each run only
+      re-reads listings whose date_collected is newer than this table's
+      current max date_collected_key, so scan cost doesn't grow with the
+      full history of raw_apartment_listings. If stg_listings' dedup/
+      mapping logic changes retroactively, run
+      `dbt run --full-refresh -s fact_apartments`.
     columns:
       - name: listing_key
         tests:
