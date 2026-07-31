@@ -295,12 +295,12 @@ Built in Power BI Desktop, connected to `marts_housing` in Import mode (`fact_ap
 
 **Overview** — KPI cards (average price, average price/m², median price, listings count), an average-price trend line, a listings-volume-over-time line, and a primary-vs-secondary-market comparison chart driven by `dim_market`.
 
-![Overview page](docs/screenshots/overview_page_1.png)
+![Overview page](docs/screenshots/overview_page_2.png)
 *Prices are in PLN with Polish number formatting (comma as decimal separator, e.g. `435,00K` = 435 thousand PLN). Trend lines are still short — see [Known Limitations](#known-limitations--honest-caveats).*
 
 **Market & Geo** — a Top Cities by average price bar chart, an average-price-and-price-per-sqm-by-date-collected dual-axis line chart, and apartment locations plotted with the ArcGIS Maps for Power BI visual (used instead of Azure Maps, which requires a Microsoft work/school account Daniil doesn't have).
 
-![Market and Geo page](docs/screenshots/trends_geo_page_1.png)
+![Market and Geo page](docs/screenshots/trends_geo_page_2.png)
 *Listing density and pricing across the 8 MVP cities.*
 
 A teal/gold Power BI theme is applied for consistent coloring across bars, lines, and the map.
