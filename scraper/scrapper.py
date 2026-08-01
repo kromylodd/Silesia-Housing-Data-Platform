@@ -225,15 +225,43 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    # Full Stage 2 list — must stay in sync with dbt/seeds/city_lookup.csv
+    # (source_city column). Order matches that seed (population-descending).
     TARGET_CITIES = [
+        "warszawa",
+        "krakow",
+        "lodz",
+        "wroclaw",
+        "poznan",
+        "gdansk",
+        "szczecin",
+        "bydgoszcz",
+        "lublin",
+        "bialystok",
         "katowice",
+        "gdynia",
+        "czestochowa",
+        "radom",
+        "rzeszow",
+        "sosnowiec",
+        "torun",
+        "kielce",
         "gliwice",
         "zabrze",
-        "bytom",
-        "chorzow",
-        "tychy",
-        "sosnowiec",
+        "olsztyn",
         "bielsko-biala",
+        "bytom",
+        "zielona-gora",
+        "rybnik",
+        "ruda-slaska",
+        "opole",
+        "tychy",
+        "gorzow-wielkopolski",
+        "dabrowa-gornicza",
+        "plock",
+        "elblag",
+        "walbrzych",
+        "chorzow",
     ]
 
     date_str = time.strftime("%Y-%m-%d")

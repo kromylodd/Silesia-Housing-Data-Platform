@@ -6,7 +6,9 @@ resource "google_cloud_run_v2_job" "daily_batch" {
   template {
     template {
       service_account = google_service_account.batch.email
-      timeout         = "3600s" # 8 cities + dbt build comfortably fits under an hour
+      timeout         = "7200s" # 34 cities (Stage 2) + dbt build — global rate-limited scrape
+                                 # alone can approach ~30-40min worst case (see rate_limiter.py);
+                                 # was 3600s, sized only for the original 8 MVP cities
       max_retries     = 1
 
       containers {

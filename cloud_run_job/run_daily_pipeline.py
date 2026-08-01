@@ -2,8 +2,9 @@
 Daily batch entrypoint for the Cloud Run Job.
 
 Runs the same scrape -> validate -> upload -> load chain the Airflow DAG
-defines (housing_pipeline_dag.py), for all 8 MVP cities, then triggers
-`dbt build` to refresh staging/marts.
+defines (housing_pipeline_dag.py), for all cities in TARGET_CITIES (34 as
+of Stage 2 — see dbt/seeds/city_lookup.csv), then triggers `dbt build` to
+refresh staging/marts.
 
 Why this exists: catchup=False + a non-continuous local Airflow scheduler
 means daily runs get silently missed instead of backfilled (backfilling
@@ -34,15 +35,43 @@ from validate_batch import validate_city_batch
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# Full Stage 2 list — must stay in sync with dbt/seeds/city_lookup.csv
+# (source_city column). Order matches that seed (population-descending).
 TARGET_CITIES = [
+    "warszawa",
+    "krakow",
+    "lodz",
+    "wroclaw",
+    "poznan",
+    "gdansk",
+    "szczecin",
+    "bydgoszcz",
+    "lublin",
+    "bialystok",
     "katowice",
+    "gdynia",
+    "czestochowa",
+    "radom",
+    "rzeszow",
+    "sosnowiec",
+    "torun",
+    "kielce",
     "gliwice",
     "zabrze",
-    "bytom",
-    "chorzow",
-    "tychy",
-    "sosnowiec",
+    "olsztyn",
     "bielsko-biala",
+    "bytom",
+    "zielona-gora",
+    "rybnik",
+    "ruda-slaska",
+    "opole",
+    "tychy",
+    "gorzow-wielkopolski",
+    "dabrowa-gornicza",
+    "plock",
+    "elblag",
+    "walbrzych",
+    "chorzow",
 ]
 
 
