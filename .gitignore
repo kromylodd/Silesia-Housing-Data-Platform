@@ -39,5 +39,6 @@ dbt_utils/
 *.tfstate.backup
 terraform.tfvars
 *.tfvars
-!terraform.tfvars.exampleairflow/logs/
+!terraform.tfvars.example
+airflow/logs/
 .user.yml
