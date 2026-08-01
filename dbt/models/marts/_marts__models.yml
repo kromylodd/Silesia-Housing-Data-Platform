@@ -2,11 +2,18 @@ version: 2
 
 models:
   - name: dim_city
-    description: One row per MVP city.
+    description: >
+      One row per distinct city present in stg_listings (currently the
+      8 MVP cities; grows automatically as scraper coverage expands).
+      Enriched with voivodeship and is_mvp via the city_lookup seed.
     columns:
       - name: city_key
         tests: [unique, not_null]
       - name: city
+        tests: [not_null]
+      - name: voivodeship
+        tests: [not_null]
+      - name: is_mvp
         tests: [not_null]
 
   - name: dim_district

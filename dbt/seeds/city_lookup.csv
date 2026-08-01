@@ -1,9 +1,35 @@
-source_city,city_name
-katowice,Katowice
-gliwice,Gliwice
-zabrze,Zabrze
-bytom,Bytom
-chorzow,Chorzów
-tychy,Tychy
-sosnowiec,Sosnowiec
-bielsko-biala,Bielsko-Biała
+source_city,city_name,voivodeship,is_mvp
+warszawa,Warszawa,mazowieckie,false
+krakow,Kraków,małopolskie,false
+lodz,Łódź,łódzkie,false
+wroclaw,Wrocław,dolnośląskie,false
+poznan,Poznań,wielkopolskie,false
+gdansk,Gdańsk,pomorskie,false
+szczecin,Szczecin,zachodniopomorskie,false
+bydgoszcz,Bydgoszcz,kujawsko-pomorskie,false
+lublin,Lublin,lubelskie,false
+bialystok,Białystok,podlaskie,false
+katowice,Katowice,śląskie,true
+gdynia,Gdynia,pomorskie,false
+czestochowa,Częstochowa,śląskie,false
+radom,Radom,mazowieckie,false
+rzeszow,Rzeszów,podkarpackie,false
+sosnowiec,Sosnowiec,śląskie,true
+torun,Toruń,kujawsko-pomorskie,false
+kielce,Kielce,świętokrzyskie,false
+gliwice,Gliwice,śląskie,true
+zabrze,Zabrze,śląskie,true
+olsztyn,Olsztyn,warmińsko-mazurskie,false
+bielsko-biala,Bielsko-Biała,śląskie,true
+bytom,Bytom,śląskie,true
+zielona-gora,Zielona Góra,lubuskie,false
+rybnik,Rybnik,śląskie,false
+ruda-slaska,Ruda Śląska,śląskie,false
+opole,Opole,opolskie,false
+tychy,Tychy,śląskie,true
+gorzow-wielkopolski,Gorzów Wielkopolski,lubuskie,false
+dabrowa-gornicza,Dąbrowa Górnicza,śląskie,false
+plock,Płock,mazowieckie,false
+elblag,Elbląg,warmińsko-mazurskie,false
+walbrzych,Wałbrzych,dolnośląskie,false
+chorzow,Chorzów,śląskie,true

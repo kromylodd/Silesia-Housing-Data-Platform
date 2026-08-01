@@ -2,7 +2,24 @@ version: 2
 
 seeds:
   - name: city_lookup
-    description: Seed mapping raw source_city slugs to standardized display names.
+    description: >
+      Maps raw source_city scrape-target slugs to standardized display
+      names and voivodeship, for the ~34 Polish cities at or above the
+      GUS 100k population threshold (Stage 2 scope). is_mvp flags the
+      original 8 Silesian cities already covered by the scraper; the
+      other 26 are enrichment/lookup only until the scraper's target
+      city list is expanded.
+    columns:
+      - name: source_city
+        description: Lowercase, diacritic-free slug used as the OLX search query value.
+        tests: [unique, not_null]
+      - name: city_name
+        description: Standardized display name with proper Polish diacritics.
+        tests: [not_null]
+      - name: voivodeship
+        tests: [not_null]
+      - name: is_mvp
+        tests: [not_null]
 
 models:
   - name: stg_listings
