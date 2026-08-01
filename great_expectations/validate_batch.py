@@ -46,6 +46,15 @@ ROOMS_MAX = 10
 # bug in one of the two source fields, not real-world rounding.
 PRICE_PER_SQM_TOLERANCE = 0.05
 
+# A handful of malformed rows (bad m² parse, a stray commercial/plot listing
+# bleeding into search results, etc.) is expected noise in any given day's
+# batch and shouldn't cost the whole city its data — those rows are
+# quarantined individually instead. But if a *large* share of a batch fails,
+# that's no longer "a few outliers", it's almost certainly a systemic parsing
+# bug (e.g. a field mapping broke upstream) and should still hard-fail the
+# city rather than silently discard a big chunk of real data.
+QUARANTINE_MAX_FRACTION = 0.05
+
 
 def _add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Adds columns computed for validation purposes only (not part of the stored schema)."""
@@ -129,9 +138,17 @@ def build_warning_suite() -> gx.ExpectationSuite:
     return suite
 
 
-def _run_suite(batch, suite) -> list[dict]:
-    result = batch.validate(suite)
+def _run_suite(batch, suite) -> tuple[list[dict], set]:
+    """
+    Runs a suite with result_format="COMPLETE" so failed expectations report
+    the exact row indices responsible (unexpected_index_list), not just a
+    sample. Returns (summary, bad_indices) — bad_indices is the union of row
+    indices behind every *failed* expectation in this suite (rows within a
+    passing `mostly=` tolerance are left alone; they were already acceptable).
+    """
+    result = batch.validate(suite, result_format="COMPLETE")
     summary = []
+    bad_indices: set = set()
     for r in result.results:
         summary.append(
             {
@@ -143,14 +160,26 @@ def _run_suite(batch, suite) -> list[dict]:
                 "partial_unexpected_list": r.result.get("partial_unexpected_list"),
             }
         )
-    return summary
+        if not r.success:
+            bad_indices.update(r.result.get("unexpected_index_list") or [])
+    return summary, bad_indices
 
 
-def validate_dataframe(df: pd.DataFrame) -> tuple[bool, list[dict], list[dict]]:
+def validate_dataframe(
+    df: pd.DataFrame,
+) -> tuple[bool, list[dict], list[dict], pd.DataFrame, pd.DataFrame]:
     """
-    Runs both suites against a dataframe.
-    Returns (critical_success, critical_results, warning_results).
-    critical_success is the only thing that should ever gate the pipeline.
+    Runs both suites against a dataframe, quarantining rows that violate the
+    critical suite instead of failing the whole batch on their account.
+
+    Returns (systemic_failure, critical_results, warning_results, clean_df, quarantined_df):
+      - systemic_failure: True only if the quarantined share exceeds
+        QUARANTINE_MAX_FRACTION — this is the one thing that should still
+        gate the pipeline. A handful of quarantined rows is expected and
+        does NOT count as failure.
+      - clean_df: original df minus quarantined rows (what should actually
+        get uploaded/loaded).
+      - quarantined_df: the rows that were dropped, for logging/inspection.
     """
     df = _add_derived_columns(df)
 
@@ -160,11 +189,20 @@ def validate_dataframe(df: pd.DataFrame) -> tuple[bool, list[dict], list[dict]]:
     batch_definition = asset.add_batch_definition_whole_dataframe("whole_batch")
     batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
 
-    critical_results = _run_suite(batch, build_critical_suite())
-    warning_results = _run_suite(batch, build_warning_suite())
+    critical_results, bad_indices = _run_suite(batch, build_critical_suite())
+    warning_results, _ = _run_suite(batch, build_warning_suite())
 
-    critical_success = all(r["success"] for r in critical_results)
-    return critical_success, critical_results, warning_results
+    quarantine_fraction = len(bad_indices) / len(df) if len(df) else 0.0
+    systemic_failure = quarantine_fraction > QUARANTINE_MAX_FRACTION
+
+    if bad_indices and not systemic_failure:
+        clean_df = df.drop(index=list(bad_indices)).reset_index(drop=True)
+        quarantined_df = df.loc[sorted(bad_indices)]
+    else:
+        clean_df = df
+        quarantined_df = df.iloc[0:0]
+
+    return systemic_failure, critical_results, warning_results, clean_df, quarantined_df
 
 
 def _local_raw_path(city: str, date_str: str) -> str:
@@ -173,11 +211,23 @@ def _local_raw_path(city: str, date_str: str) -> str:
     return os.path.join(repo_root, "data", "raw", city, date_str, "listings.json")
 
 
+def _local_quarantine_path(city: str, date_str: str) -> str:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(base_dir)
+    return os.path.join(repo_root, "data", "quarantine", city, date_str, "rejected.json")
+
+
 def validate_city_batch(city: str, date_str: str) -> None:
     """
     Airflow entry point. Loads a city's local raw JSON, validates it, and
-    raises if the batch fails — which fails the Airflow task and blocks the
-    downstream GCS upload task from running on bad data.
+    rewrites that same file to contain only the rows that pass the critical
+    suite — a handful of malformed listings (bad m² parse, a stray
+    commercial/plot listing bleeding into search results) get quarantined
+    individually instead of costing the whole city its data for the day.
+
+    Only raises — failing the Airflow task and blocking the downstream GCS
+    upload task — if the quarantined share exceeds QUARANTINE_MAX_FRACTION,
+    which signals a systemic parsing bug rather than a few outliers.
     """
     path = _local_raw_path(city, date_str)
     with open(path, "r", encoding="utf-8") as f:
@@ -188,7 +238,9 @@ def validate_city_batch(city: str, date_str: str) -> None:
         return
 
     df = pd.DataFrame(records)
-    success, critical_results, warning_results = validate_dataframe(df)
+    systemic_failure, critical_results, warning_results, clean_df, quarantined_df = (
+        validate_dataframe(df)
+    )
 
     for r in critical_results:
         level = logging.INFO if r["success"] else logging.ERROR
@@ -209,16 +261,54 @@ def validate_city_batch(city: str, date_str: str) -> None:
             f"unexpected={r['unexpected_count']} ({r['unexpected_percent']}%)",
         )
 
-    if not success:
+    if systemic_failure:
         failed = [r for r in critical_results if not r["success"]]
         raise ValueError(
-            f"[{city}] Great Expectations validation FAILED — {len(failed)} critical expectation(s) violated: "
+            f"[{city}] Great Expectations validation FAILED — quarantine share exceeded "
+            f"{QUARANTINE_MAX_FRACTION:.0%}, treating as a systemic bug: "
             + ", ".join(f"{r['expectation']}({r['column']})" for r in failed)
         )
 
-    logger.info(
-        f"[{city}] Validation passed — {len(records)} listings, all critical expectations satisfied."
-    )
+    if len(quarantined_df) > 0:
+        rejected_records = quarantined_df.to_dict(orient="records")
+        for rec in rejected_records:
+            logger.warning(
+                f"[{city}] Quarantined listing id={rec.get('id')} url={rec.get('url')} "
+                f"— failed critical expectation(s)."
+            )
+
+        # Best-effort: persist rejected rows for later inspection. Never let
+        # this fail the pipeline — it's a nice-to-have audit trail, not a
+        # dependency of the upload/load steps below.
+        try:
+            qpath = _local_quarantine_path(city, date_str)
+            os.makedirs(os.path.dirname(qpath), exist_ok=True)
+            with open(qpath, "w", encoding="utf-8") as f:
+                json.dump(rejected_records, f, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            logger.warning(f"[{city}] Failed to write quarantine file — continuing anyway.")
+
+        # Overwrite the raw file with only the clean rows so gcs_uploader /
+        # bq_loader — which both re-read this same path — never see the
+        # quarantined listings. No changes needed in either of those.
+        # df.columns is the original (pre-derived-column) schema, so this
+        # intersection drops price_per_sqm_diff_pct (validation-only) before
+        # writing back — it was never part of the stored schema.
+        clean_records = clean_df[df.columns.intersection(clean_df.columns)].to_dict(
+            orient="records"
+        )
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(clean_records, f, ensure_ascii=False, indent=2, default=str)
+
+        logger.warning(
+            f"[{city}] Quarantined {len(quarantined_df)}/{len(records)} listings "
+            f"({len(quarantined_df) / len(records):.1%}) — "
+            f"{len(clean_df)} clean listings proceeding to upload."
+        )
+    else:
+        logger.info(
+            f"[{city}] Validation passed — {len(records)} listings, all critical expectations satisfied."
+        )
 
 
 if __name__ == "__main__":
