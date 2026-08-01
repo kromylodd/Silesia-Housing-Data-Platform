@@ -230,8 +230,21 @@ def validate_city_batch(city: str, date_str: str) -> None:
     which signals a systemic parsing bug rather than a few outliers.
     """
     path = _local_raw_path(city, date_str)
-    with open(path, "r", encoding="utf-8") as f:
-        records = json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            records = json.load(f)
+    except FileNotFoundError:
+        # save_to_local_raw() deliberately doesn't write a file when there's
+        # nothing to save — a city with zero listings this run (genuinely no
+        # results, or its scrape task failed entirely and was mapped to an
+        # empty list upstream) looks identical to "file never created" from
+        # here. Treat it the same as the empty-records case below rather
+        # than crashing: nothing to validate, nothing to upload.
+        logger.warning(
+            f"[{city}] No raw file found for {date_str} — scrape produced 0 listings "
+            f"(or its scrape task failed entirely), nothing to validate."
+        )
+        return
 
     if not records:
         logger.warning(f"[{city}] 0 listings in batch — nothing to validate, skipping.")
