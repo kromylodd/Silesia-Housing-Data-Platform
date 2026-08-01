@@ -16,6 +16,7 @@ The Airflow DAG is unchanged and still the local/dev orchestrator — full
 task-level UI, retries, and manual subset runs via the `cities` Param.
 """
 
+import asyncio
 import logging
 import subprocess
 import sys
@@ -27,7 +28,7 @@ sys.path.insert(0, "/app/great_expectations")
 from bq_loader import load_city_to_bigquery
 from gcs_uploader import upload_city_listings_to_gcs
 from loader import save_to_local_raw
-from scrapper import scrape_city
+from scrapper import scrape_cities_async
 from validate_batch import validate_city_batch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -45,16 +46,20 @@ TARGET_CITIES = [
 ]
 
 
-def run_city(city: str, date_str: str) -> bool:
-    """Runs one city's full chain. Returns True on success, False on failure.
+# Global cap across ALL cities combined, not per city — see scraper/rate_limiter.py.
+# Keeps OLX's actual request rate roughly flat as TARGET_CITIES grows in Stage 2.
+SCRAPE_MAX_CONCURRENT = 4
+
+
+def load_city(city: str, listings: list, date_str: str) -> bool:
+    """Runs one city's post-scrape chain (save -> validate -> upload -> load).
 
     Deliberately catches and logs rather than raising: one bad city
-    (OLX hiccup, validation failure, transient GCS/BQ error) shouldn't
-    take down the other 7 cities' daily data.
+    (validation failure, transient GCS/BQ error) shouldn't take down the
+    rest of the batch's daily data.
     """
     try:
-        data = scrape_city(city, max_pages=25)
-        save_to_local_raw(city, data, date_str=date_str)
+        save_to_local_raw(city, listings, date_str=date_str)
         validate_city_batch(city, date_str)
         upload_city_listings_to_gcs(city, date_str=date_str)
         load_city_to_bigquery(city, date_str=date_str)
@@ -69,7 +74,20 @@ def main() -> int:
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     logger.info(f"Starting daily batch run for {date_str}")
 
-    results = {city: run_city(city, date_str) for city in TARGET_CITIES}
+    # Phase 1: scrape every city concurrently, paced by one shared rate
+    # limiter. This is the part that used to scale linearly with city count
+    # (sequential, one city fully finished before the next started).
+    logger.info(f"Scraping {len(TARGET_CITIES)} cities (max_concurrent={SCRAPE_MAX_CONCURRENT})")
+    scraped = asyncio.run(
+        scrape_cities_async(TARGET_CITIES, max_pages=25, max_concurrent=SCRAPE_MAX_CONCURRENT)
+    )
+
+    # Phase 2: validate/upload/load stays sequential per city. GE + GCS + BQ
+    # client calls are sync and cheap relative to network-bound scraping, so
+    # there's no real wall-clock win in parallelizing this phase too — and
+    # keeping it sequential keeps BQ load ordering predictable and logs easy
+    # to follow.
+    results = {city: load_city(city, listings, date_str) for city, listings in scraped.items()}
     failed = [city for city, ok in results.items() if not ok]
     if failed:
         logger.error(f"Cities failed this run: {failed}")

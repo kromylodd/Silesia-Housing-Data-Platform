@@ -1,12 +1,12 @@
+import asyncio
 import logging
 import random
 import time
 
-import requests
+import httpx
 from loader import save_to_local_raw
 from parser import clean_listing_data
-
-logger = logging.getLogger(__name__)
+from rate_limiter import GlobalRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,6 @@ HEADERS = {
     "origin": "https://www.olx.pl",
 }
 
-# The brand new query you extracted! I trimmed the extra metadata fields
-# to keep it fast, but kept all the listing data we need.
 QUERY = """
 query ListingSearchQuery(
   $searchParameters: [SearchParameter!] = []
@@ -72,7 +70,20 @@ query ListingSearchQuery(
 """
 
 
-def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
+async def fetch_olx_page_async(
+    client: httpx.AsyncClient,
+    limiter: GlobalRateLimiter,
+    city: str,
+    offset: int = 0,
+    limit: int = 40,
+    max_retries: int = 3,
+) -> dict:
+    """Fetches one page of listings for `city`, paced by the shared limiter.
+
+    The limiter is acquired fresh on every attempt (including retries), so a
+    retry after a transient failure still respects the global pacing budget
+    instead of firing immediately.
+    """
     payload = {
         "operationName": "ListingSearchQuery",
         "query": QUERY,
@@ -85,33 +96,42 @@ def fetch_olx_page(city, offset=0, limit=40, max_retries=3):
                 {"key": "suggest_filters", "value": "true"},
             ],
             "searchOptions": None,
-            # fetchPayAndShip removed — unused, caused GRAPHQL_VALIDATION_FAILED
         },
     }
 
     for attempt in range(max_retries):
         try:
-            response = requests.post(GRAPHQL_URL, headers=HEADERS, json=payload, timeout=10)
+            async with limiter:
+                response = await client.post(GRAPHQL_URL, headers=HEADERS, json=payload, timeout=10)
             response.raise_for_status()
             data = response.json()
 
-            # Print any hidden GraphQL validation or runtime errors for debugging
             if "errors" in data:
                 logger.error(f"[{city.upper()}] GraphQL error response: {data['errors']}")
 
             return data
-        except requests.RequestException as err:
+        except httpx.HTTPError as err:
             wait = (2**attempt) + random.uniform(0, 1)
             logger.warning(
                 f"[{city.upper()}] Request failed (attempt {attempt + 1}/{max_retries}): {err}. Retrying in {wait:.1f}s"
             )
-            time.sleep(wait)
+            await asyncio.sleep(wait)
 
     raise RuntimeError(f"[{city.upper()}] Failed offset={offset} after {max_retries} attempts")
 
 
-def scrape_city(city, max_pages=25):
-    """Scrapes and parses all sale listings for a single city, paginating through results."""
+async def scrape_city_async(
+    client: httpx.AsyncClient,
+    limiter: GlobalRateLimiter,
+    city: str,
+    max_pages: int = 25,
+) -> list:
+    """Scrapes and parses all sale listings for a single city, paginating through results.
+
+    Pagination within a city stays sequential (page N+1 needs to know whether
+    page N was full) — concurrency happens *across* cities in
+    scrape_cities_async, not within one city's page loop.
+    """
     all_listings = []
     limit = 40
 
@@ -120,7 +140,7 @@ def scrape_city(city, max_pages=25):
         logger.info(f"[{city.upper()}] Fetching page {page + 1} (offset: {offset})...")
 
         try:
-            res_json = fetch_olx_page(city=city, offset=offset, limit=limit)
+            res_json = await fetch_olx_page_async(client, limiter, city, offset, limit)
         except RuntimeError as err:
             logger.error(f"[{city.upper()}] Giving up: {err}")
             break
@@ -148,11 +168,55 @@ def scrape_city(city, max_pages=25):
         if len(raw_items) < limit:
             break  # last page reached
 
-        time.sleep(random.uniform(1.5, 3.5))
-
     unique_listings = list({item["id"]: item for item in all_listings}.values())
     logger.info(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
     return unique_listings
+
+
+async def scrape_cities_async(
+    cities: list,
+    max_pages: int = 25,
+    max_concurrent: int = 4,
+    min_interval: tuple = (1.5, 3.0),
+) -> dict:
+    """Scrapes multiple cities concurrently under one shared rate limiter.
+
+    `max_concurrent` and `min_interval` bound the *global* request rate to
+    OLX across every city combined — this is what keeps the source-facing
+    hit rate roughly flat as the target city list grows (8 -> 30-40+ cities
+    in Stage 2), instead of scaling with city count.
+
+    Returns {city: [listings]}. A city whose scrape task raises is logged
+    and mapped to an empty list rather than failing the whole batch — one
+    bad city shouldn't take down the other 33.
+    """
+    limiter = GlobalRateLimiter(max_concurrent=max_concurrent, min_interval=min_interval)
+    results = {}
+
+    async with httpx.AsyncClient() as client:
+        tasks = {
+            city: asyncio.create_task(scrape_city_async(client, limiter, city, max_pages))
+            for city in cities
+        }
+        for city, task in tasks.items():
+            try:
+                results[city] = await task
+            except Exception:
+                logger.exception(f"[{city}] scrape task failed entirely")
+                results[city] = []
+
+    return results
+
+
+def scrape_city(city: str, max_pages: int = 25) -> list:
+    """Sync wrapper around the async scraper for a single city.
+
+    Kept for callers that don't need cross-city concurrency: the Airflow
+    DAG's per-task PythonOperator callables (Airflow parallelizes at the
+    task level, not within a task), and tests. Runs the same async path
+    with concurrency effectively capped at 1.
+    """
+    return asyncio.run(scrape_cities_async([city], max_pages=max_pages, max_concurrent=1))[city]
 
 
 if __name__ == "__main__":
@@ -172,9 +236,8 @@ if __name__ == "__main__":
         "bielsko-biala",
     ]
 
-    for target_city in TARGET_CITIES:
-        logger.info(f"STARTING TARGET: {target_city.upper()}")
-        city_listings = scrape_city(target_city, max_pages=25)
-        save_to_local_raw(target_city, city_listings)
+    date_str = time.strftime("%Y-%m-%d")
+    all_results = asyncio.run(scrape_cities_async(TARGET_CITIES, max_pages=25, max_concurrent=4))
 
-        time.sleep(random.uniform(5.0, 10.0))
+    for target_city, city_listings in all_results.items():
+        save_to_local_raw(target_city, city_listings, date_str=date_str)

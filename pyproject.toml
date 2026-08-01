@@ -24,3 +24,9 @@ ignore = [
     # can throw, which isn't worth it for a per-item resilience catch.
     "BLE001",
 ]
+
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
