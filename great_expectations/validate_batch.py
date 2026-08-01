@@ -283,7 +283,20 @@ def validate_city_batch(city: str, date_str: str) -> None:
         )
 
     if len(quarantined_df) > 0:
-        rejected_records = quarantined_df.to_dict(orient="records")
+        # quarantined_df.index still holds the ORIGINAL row positions (clean_df's
+        # index was reset in validate_dataframe, quarantined_df's wasn't) — use
+        # those to filter the pristine `records` list straight from the JSON we
+        # loaded, rather than reconstructing rows via pandas. A DataFrame
+        # round-trip silently upcasts any nullable-int column (e.g. `floor`,
+        # which is often null on search-result listings) to float64 the moment
+        # a single None appears alongside real integers — so a rewritten file
+        # would write "floor": 1.0 instead of 1, which BigQuery's strict
+        # INTEGER schema then rejects at load time. Filtering the original
+        # dicts by index sidesteps that entirely: native types are untouched.
+        bad_positions = set(quarantined_df.index.tolist())
+        rejected_records = [records[i] for i in sorted(bad_positions)]
+        clean_records = [r for i, r in enumerate(records) if i not in bad_positions]
+
         for rec in rejected_records:
             logger.warning(
                 f"[{city}] Quarantined listing id={rec.get('id')} url={rec.get('url')} "
@@ -304,12 +317,9 @@ def validate_city_batch(city: str, date_str: str) -> None:
         # Overwrite the raw file with only the clean rows so gcs_uploader /
         # bq_loader — which both re-read this same path — never see the
         # quarantined listings. No changes needed in either of those.
-        # df.columns is the original (pre-derived-column) schema, so this
-        # intersection drops price_per_sqm_diff_pct (validation-only) before
-        # writing back — it was never part of the stored schema.
-        clean_records = clean_df[df.columns.intersection(clean_df.columns)].to_dict(
-            orient="records"
-        )
+        # (clean_records, filtered above, is already the pristine JSON shape —
+        # no derived columns to strip, since price_per_sqm_diff_pct only ever
+        # existed inside validate_dataframe's internal copy of the frame.)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(clean_records, f, ensure_ascii=False, indent=2, default=str)
 
