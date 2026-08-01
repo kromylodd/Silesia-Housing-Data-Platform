@@ -20,12 +20,21 @@ with listings as (
     -- inserts new listing_ids and updates existing ones in place - so scan
     -- cost stays roughly flat as raw history grows, instead of growing with it.
     --
+    -- Uses >= rather than > deliberately: with a strict >, any dbt build run
+    -- after the first one on a given calendar day would compare today's date
+    -- against itself (today > today = false) and silently merge 0 rows for
+    -- the rest of that day - no error, just quietly stale until the next
+    -- calendar day. >= re-scans (and re-merges, harmlessly, since merge is
+    -- keyed on listing_key) today's slice on every same-day rerun instead -
+    -- more correct at the cost of reprocessing one day's worth of rows
+    -- instead of zero, not the whole table.
+    --
     -- NOTE: if stg_listings' dedup/mapping logic changes retroactively (e.g.
     -- a city_lookup edit), already-loaded rows here won't be reprocessed by
     -- this filter. Run `dbt run --full-refresh -s fact_apartments` after such
     -- changes.
     where cast(format_date('%Y%m%d', date(src.date_collected)) as int64)
-        > (select coalesce(max(date_collected_key), 0) from {{ this }})
+        >= (select coalesce(max(date_collected_key), 0) from {{ this }})
     {% endif %}
 
 ),
