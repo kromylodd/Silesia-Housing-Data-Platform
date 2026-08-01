@@ -125,9 +125,10 @@ models:
         tests:
           - unique
           - not_null
-          - accepted_values:
+          - relationships:
               arguments:
-                values: ['Katowice', 'Gliwice', 'Zabrze', 'Bytom', 'Chorzów', 'Tychy', 'Sosnowiec', 'Bielsko-Biała']
+                to: ref('city_lookup')
+                field: city_name
       - name: num_listings
         tests: [not_null]
 

@@ -44,9 +44,10 @@ models:
         description: Standardized city name (proper Polish diacritics), derived from source_city.
         tests:
           - not_null
-          - accepted_values:
+          - relationships:
               arguments:
-                values: ['Katowice', 'Gliwice', 'Zabrze', 'Bytom', 'Chorzów', 'Tychy', 'Sosnowiec', 'Bielsko-Biała']
+                to: ref('city_lookup')
+                field: city_name
 
       # district is intentionally NOT tested not_null — it's legitimately
       # missing for a meaningful share of listings (see GE warning suite /
