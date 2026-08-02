@@ -12,6 +12,7 @@ an Airflow container on a schedule — see README section on generating Data
 Docs locally if you want an HTML report for the portfolio writeup.
 """
 
+import functools
 import json
 import logging
 import os
@@ -23,6 +24,55 @@ import great_expectations as gx
 from great_expectations import expectations as gxe
 
 logger = logging.getLogger(__name__)
+
+# city_lookup.csv is the single source of truth for per-city geo bounding
+# boxes (bbox_lat_min/max, bbox_lon_min/max) — shared with the dbt seed
+# used by dim_city and the assert_geo_within_city_bounds.sql defense-in-depth
+# test, so the bounds never drift between the pre-load and post-load checks.
+_CITY_LOOKUP_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dbt", "seeds", "city_lookup.csv"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _load_city_bounds() -> dict:
+    """
+    Loads {source_city: {lat_min, lat_max, lon_min, lon_max}} from the
+    city_lookup seed. Cached (module-level, one process = one Airflow task /
+    one Cloud Run execution) since it's read at most once per batch anyway.
+    Missing file or missing bbox columns degrades to an empty dict rather
+    than crashing — a city with no known bbox just skips geo validation
+    (see build_critical_suite), it doesn't fail the pipeline.
+    """
+    try:
+        lookup = pd.read_csv(_CITY_LOOKUP_PATH)
+    except FileNotFoundError:
+        logger.warning(
+            f"city_lookup.csv not found at {_CITY_LOOKUP_PATH} — geo validation disabled."
+        )
+        return {}
+
+    bbox_cols = {"bbox_lat_min", "bbox_lat_max", "bbox_lon_min", "bbox_lon_max"}
+    if not bbox_cols.issubset(lookup.columns):
+        logger.warning("city_lookup.csv missing bbox_* columns — geo validation disabled.")
+        return {}
+
+    bounds = {}
+    for _, row in lookup.iterrows():
+        if row[list(bbox_cols)].isna().any():
+            continue
+        bounds[row["source_city"]] = {
+            "lat_min": float(row["bbox_lat_min"]),
+            "lat_max": float(row["bbox_lat_max"]),
+            "lon_min": float(row["bbox_lon_min"]),
+            "lon_max": float(row["bbox_lon_max"]),
+        }
+    return bounds
+
+
+def _city_bounds(city: str) -> dict | None:
+    return _load_city_bounds().get(city)
+
 
 # District is legitimately missing from OLX for a meaningful share of listings
 # (smaller cities in particular) — this is not a scraper bug. A real Katowice
@@ -68,12 +118,28 @@ def _add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_critical_suite() -> gx.ExpectationSuite:
+def build_critical_suite(
+    city: str | None = None, columns: frozenset[str] | None = None
+) -> gx.ExpectationSuite:
     """
     Expectations that block the pipeline on failure. Only things that
     indicate real corruption/parsing bugs belong here — anything that's a
     known, legitimate property of the source data (e.g. district being
     sometimes absent) does NOT belong here, it belongs in the warning suite.
+
+    `city` (the scrape-target source_city, e.g. "gliwice") scopes the
+    latitude/longitude range check to that city's bounding box, if known —
+    see the geo bounding-box block below.
+
+    `columns` (the incoming dataframe's column set) guards that same check:
+    parser.py's clean_listing_data() always emits latitude/longitude keys
+    (null when OLX's `map` field is absent), so a missing *column* rather
+    than a null *value* would mean an unexpected raw-file shape (e.g. a
+    pre-geo-parser file re-validated by hand). GX raises a hard KeyError
+    trying to evaluate a between-check against a column that doesn't exist
+    at all — vs. a null value, which it already excludes gracefully — so
+    this is checked explicitly to keep that failure mode a skip, not a
+    crashed Airflow task.
     """
     suite = gx.ExpectationSuite(name="raw_listings_critical")
 
@@ -119,6 +185,39 @@ def build_critical_suite() -> gx.ExpectationSuite:
             column="price_per_sqm_diff_pct", min_value=0, max_value=PRICE_PER_SQM_TOLERANCE
         )
     )
+
+    # --- geo bounding box: catches OLX fuzzy-search noise (a listing that
+    # comes back for city X's search query but is actually located nowhere
+    # near X). Scoped per-city rather than one national box because a
+    # national box would never catch a same-region mismatch (e.g. a
+    # Warszawa listing bleeding into a Radom batch — both nationally
+    # in-bounds, only a per-city box catches it). Null lat/lon is common
+    # (OLX's `map` field is often absent) and passes vacuously — GX only
+    # evaluates non-null values for a between check, it doesn't need
+    # `mostly=` for that. Skipped entirely if `city` has no known bbox
+    # (unmapped source_city) rather than failing the batch.
+    has_geo_columns = columns is None or {"latitude", "longitude"}.issubset(columns)
+    if city is not None and has_geo_columns:
+        bounds = _city_bounds(city)
+        if bounds is not None:
+            suite.add_expectation(
+                gxe.ExpectColumnValuesToBeBetween(
+                    column="latitude", min_value=bounds["lat_min"], max_value=bounds["lat_max"]
+                )
+            )
+            suite.add_expectation(
+                gxe.ExpectColumnValuesToBeBetween(
+                    column="longitude", min_value=bounds["lon_min"], max_value=bounds["lon_max"]
+                )
+            )
+        else:
+            logger.warning(
+                f"[{city}] No geo bounding box in city_lookup — skipping geo validation for this batch."
+            )
+    elif city is not None:
+        logger.warning(
+            f"[{city}] Batch has no latitude/longitude columns — skipping geo validation."
+        )
 
     return suite
 
@@ -167,10 +266,16 @@ def _run_suite(batch, suite) -> tuple[list[dict], set]:
 
 def validate_dataframe(
     df: pd.DataFrame,
+    city: str | None = None,
 ) -> tuple[bool, list[dict], list[dict], pd.DataFrame, pd.DataFrame]:
     """
     Runs both suites against a dataframe, quarantining rows that violate the
     critical suite instead of failing the whole batch on their account.
+
+    `city` (source_city slug) scopes the geo bounding-box check — see
+    build_critical_suite(). Optional and defaults to None (geo check
+    skipped) so existing callers/tests that validate a bare dataframe
+    without city context keep working unchanged.
 
     Returns (systemic_failure, critical_results, warning_results, clean_df, quarantined_df):
       - systemic_failure: True only if the quarantined share exceeds
@@ -189,7 +294,9 @@ def validate_dataframe(
     batch_definition = asset.add_batch_definition_whole_dataframe("whole_batch")
     batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
 
-    critical_results, bad_indices = _run_suite(batch, build_critical_suite())
+    critical_results, bad_indices = _run_suite(
+        batch, build_critical_suite(city=city, columns=frozenset(df.columns))
+    )
     warning_results, _ = _run_suite(batch, build_warning_suite())
 
     quarantine_fraction = len(bad_indices) / len(df) if len(df) else 0.0
@@ -252,7 +359,7 @@ def validate_city_batch(city: str, date_str: str) -> None:
 
     df = pd.DataFrame(records)
     systemic_failure, critical_results, warning_results, clean_df, quarantined_df = (
-        validate_dataframe(df)
+        validate_dataframe(df, city=city)
     )
 
     for r in critical_results:

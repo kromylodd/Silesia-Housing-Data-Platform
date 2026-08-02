@@ -20,6 +20,27 @@ seeds:
         tests: [not_null]
       - name: is_mvp
         tests: [not_null]
+      - name: bbox_lat_min
+        description: >
+          Southern latitude bound of the city's geo-validation bounding box
+          (city center +/- a tier-sized buffer: ~28km for large metros,
+          ~20km mid-sized, ~14km for the dense Upper Silesian conurbation
+          cities). Used by both GE (validate_batch.py, pre-load) and
+          assert_geo_within_city_bounds.sql (post-load defense-in-depth) to
+          catch OLX fuzzy-search noise — a listing whose lat/lon land far
+          outside the target city's box despite being returned for that
+          city's search query.
+        tests: [not_null]
+      - name: bbox_lat_max
+        tests: [not_null]
+      - name: bbox_lon_min
+        tests: [not_null]
+      - name: bbox_lon_max
+        tests: [not_null]
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "bbox_lat_min < bbox_lat_max and bbox_lon_min < bbox_lon_max"
 
 models:
   - name: stg_listings

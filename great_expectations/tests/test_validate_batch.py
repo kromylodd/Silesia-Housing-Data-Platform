@@ -196,3 +196,86 @@ def test_district_missing_rate_is_still_surfaced_in_warning_results():
     df["district"] = None
     _, _, warning_results, _, _ = validate_dataframe(df)
     assert _fails_on(warning_results, "expect_column_values_to_not_be_null", "district")
+
+
+# --- geo bounding box: catches OLX fuzzy-search noise ---
+
+
+def test_no_city_passed_skips_geo_check():
+    """Existing callers that don't pass `city` (default None) get unchanged behavior."""
+    df = _padded_fixture()
+    df.loc[0, "latitude"] = 54.3520  # Gdańsk — nowhere near Katowice
+    df.loc[0, "longitude"] = 18.6466
+    systemic_failure, critical_results, _, _clean_df, quarantined_df = validate_dataframe(df)
+    assert not systemic_failure
+    assert len(quarantined_df) == 0
+    assert not _fails_on(critical_results, "expect_column_values_to_be_between", "latitude")
+
+
+def test_null_lat_lon_passes_geo_check_vacuously():
+    """Real batches routinely have entirely null lat/lon (OLX's `map` field is often absent) —
+    that must never be treated as an out-of-bounds failure."""
+    df = _load_fixture()
+    assert df["latitude"].isna().all()  # sanity-check the fixture's actual shape
+    systemic_failure, critical_results, _, _clean_df, quarantined_df = validate_dataframe(
+        df, city="katowice"
+    )
+    assert not systemic_failure
+    assert len(quarantined_df) == 0
+    assert not _fails_on(critical_results, "expect_column_values_to_be_between", "latitude")
+
+
+def test_listing_outside_city_bbox_is_quarantined():
+    """A listing whose coordinates land in a completely different city (Gdańsk) despite being
+    scraped under a Katowice batch — the OLX fuzzy-search-noise scenario this check exists for."""
+    df = _padded_fixture()
+    df.loc[0, "latitude"] = 54.3520
+    df.loc[0, "longitude"] = 18.6466
+    systemic_failure, critical_results, _, _clean_df, quarantined_df = validate_dataframe(
+        df, city="katowice"
+    )
+    assert not systemic_failure
+    assert _fails_on(
+        critical_results, "expect_column_values_to_be_between", "latitude"
+    ) or _fails_on(critical_results, "expect_column_values_to_be_between", "longitude")
+    assert len(quarantined_df) == 1
+
+
+def test_listing_inside_city_bbox_passes():
+    """Real Katowice coordinates should never get quarantined by the check meant to catch
+    the opposite problem."""
+    df = _padded_fixture()
+    df.loc[0, "latitude"] = 50.2649
+    df.loc[0, "longitude"] = 19.0238
+    systemic_failure, _critical_results, _, _clean_df, quarantined_df = validate_dataframe(
+        df, city="katowice"
+    )
+    assert not systemic_failure
+    assert len(quarantined_df) == 0
+
+
+def test_missing_geo_columns_entirely_skips_check_without_crashing():
+    """A raw file shaped without latitude/longitude keys at all (not just null values) must
+    degrade to a skip, not a KeyError crash — GX can't evaluate a between-check against a
+    column that doesn't exist, unlike a null value which it excludes gracefully."""
+    df = _load_fixture().drop(columns=["latitude", "longitude"])
+    systemic_failure, critical_results, _, _clean_df, quarantined_df = validate_dataframe(
+        df, city="katowice"
+    )
+    assert not systemic_failure
+    assert len(quarantined_df) == 0
+    assert not _fails_on(critical_results, "expect_column_values_to_be_between", "latitude")
+
+
+def test_unknown_city_skips_geo_check_without_failing():
+    """A source_city not present in city_lookup (or a typo) shouldn't crash the batch or
+    silently quarantine everything — it just means no geo check runs for that batch."""
+    df = _padded_fixture()
+    df.loc[0, "latitude"] = 54.3520
+    df.loc[0, "longitude"] = 18.6466
+    systemic_failure, critical_results, _, _clean_df, quarantined_df = validate_dataframe(
+        df, city="not-a-real-city"
+    )
+    assert not systemic_failure
+    assert len(quarantined_df) == 0
+    assert not _fails_on(critical_results, "expect_column_values_to_be_between", "latitude")

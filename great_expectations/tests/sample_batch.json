@@ -11,7 +11,9 @@
     "floor": 1,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 12356.32
+    "price_per_sqm_listed": 12356.32,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1048095136,
@@ -25,7 +27,9 @@
     "floor": 7,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 11425.71
+    "price_per_sqm_listed": 11425.71,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1085023962,
@@ -39,7 +43,9 @@
     "floor": 10,
     "floor_capped": true,
     "market_type": "secondary",
-    "price_per_sqm_listed": 8536.59
+    "price_per_sqm_listed": 8536.59,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1086838196,
@@ -53,7 +59,9 @@
     "floor": 3,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 6364.62
+    "price_per_sqm_listed": 6364.62,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1086754995,
@@ -67,7 +75,9 @@
     "floor": 1,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 3590.16
+    "price_per_sqm_listed": 3590.16,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1083887734,
@@ -81,7 +91,9 @@
     "floor": 4,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 3512.88
+    "price_per_sqm_listed": 3512.88,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1078437906,
@@ -95,7 +107,9 @@
     "floor": 0,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 7794.87
+    "price_per_sqm_listed": 7794.87,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1083762108,
@@ -109,7 +123,9 @@
     "floor": 2,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 7760.0
+    "price_per_sqm_listed": 7760.0,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1084615474,
@@ -123,7 +139,9 @@
     "floor": 3,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 9279.7
+    "price_per_sqm_listed": 9279.7,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1083078796,
@@ -137,7 +155,9 @@
     "floor": 0,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 7428.57
+    "price_per_sqm_listed": 7428.57,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1084756929,
@@ -151,7 +171,9 @@
     "floor": 2,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 6000.0
+    "price_per_sqm_listed": 6000.0,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1085156835,
@@ -165,7 +187,9 @@
     "floor": 1,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 3842.46
+    "price_per_sqm_listed": 3842.46,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1082857862,
@@ -179,7 +203,9 @@
     "floor": 3,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 5434.78
+    "price_per_sqm_listed": 5434.78,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1085168275,
@@ -193,7 +219,9 @@
     "floor": 2,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 11525.42
+    "price_per_sqm_listed": 11525.42,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1086150142,
@@ -207,7 +235,9 @@
     "floor": 4,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 7894.74
+    "price_per_sqm_listed": 7894.74,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1064276750,
@@ -221,7 +251,9 @@
     "floor": 1,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 11903.23
+    "price_per_sqm_listed": 11903.23,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1072996482,
@@ -235,7 +267,9 @@
     "floor": 4,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 5579.71
+    "price_per_sqm_listed": 5579.71,
+    "latitude": null,
+    "longitude": null
   },
   {
     "id": 1081244772,
@@ -249,6 +283,8 @@
     "floor": 1,
     "floor_capped": false,
     "market_type": "secondary",
-    "price_per_sqm_listed": 6149.53
+    "price_per_sqm_listed": 6149.53,
+    "latitude": null,
+    "longitude": null
   }
 ]

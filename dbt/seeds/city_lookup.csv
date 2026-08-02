@@ -1,35 +1,35 @@
-source_city,city_name,voivodeship,is_mvp
-warszawa,Warszawa,mazowieckie,false
-krakow,Kraków,małopolskie,false
-lodz,Łódź,łódzkie,false
-wroclaw,Wrocław,dolnośląskie,false
-poznan,Poznań,wielkopolskie,false
-gdansk,Gdańsk,pomorskie,false
-szczecin,Szczecin,zachodniopomorskie,false
-bydgoszcz,Bydgoszcz,kujawsko-pomorskie,false
-lublin,Lublin,lubelskie,false
-bialystok,Białystok,podlaskie,false
-katowice,Katowice,śląskie,true
-gdynia,Gdynia,pomorskie,false
-czestochowa,Częstochowa,śląskie,false
-radom,Radom,mazowieckie,false
-rzeszow,Rzeszów,podkarpackie,false
-sosnowiec,Sosnowiec,śląskie,true
-torun,Toruń,kujawsko-pomorskie,false
-kielce,Kielce,świętokrzyskie,false
-gliwice,Gliwice,śląskie,true
-zabrze,Zabrze,śląskie,true
-olsztyn,Olsztyn,warmińsko-mazurskie,false
-bielsko-biala,Bielsko-Biała,śląskie,true
-bytom,Bytom,śląskie,true
-zielona-gora,Zielona Góra,lubuskie,false
-rybnik,Rybnik,śląskie,false
-ruda-slaska,Ruda Śląska,śląskie,false
-opole,Opole,opolskie,false
-tychy,Tychy,śląskie,true
-gorzow-wielkopolski,Gorzów Wielkopolski,lubuskie,false
-dabrowa-gornicza,Dąbrowa Górnicza,śląskie,false
-plock,Płock,mazowieckie,false
-elblag,Elbląg,warmińsko-mazurskie,false
-walbrzych,Wałbrzych,dolnośląskie,false
-chorzow,Chorzów,śląskie,true
+source_city,city_name,voivodeship,is_mvp,bbox_lat_min,bbox_lat_max,bbox_lon_min,bbox_lon_max
+warszawa,Warszawa,mazowieckie,false,51.9774,52.482,20.6004,21.424
+krakow,Kraków,małopolskie,false,49.8124,50.317,19.552,20.338
+lodz,Łódź,łódzkie,false,51.5069,52.0115,19.0485,19.8635
+wroclaw,Wrocław,dolnośląskie,false,50.8556,51.3602,16.6367,17.4403
+poznan,Poznań,wielkopolskie,false,52.1541,52.6587,16.5117,17.3387
+gdansk,Gdańsk,pomorskie,false,54.0997,54.6043,18.2138,19.0794
+szczecin,Szczecin,zachodniopomorskie,false,53.1762,53.6808,14.1294,14.9762
+bydgoszcz,Bydgoszcz,kujawsko-pomorskie,false,52.9433,53.3037,17.7081,18.3087
+lublin,Lublin,lubelskie,false,51.0663,51.4267,22.2806,22.8562
+bialystok,Białystok,podlaskie,false,52.9523,53.3127,22.8685,23.4691
+katowice,Katowice,śląskie,true,50.0847,50.4451,18.7419,19.3057
+gdynia,Gdynia,pomorskie,false,54.3387,54.6991,18.2201,18.8409
+czestochowa,Częstochowa,śląskie,false,50.6316,50.992,18.8351,19.4055
+radom,Radom,mazowieckie,false,51.2225,51.5829,20.8583,21.4359
+rzeszow,Rzeszów,podkarpackie,false,49.8611,50.2215,21.7184,22.2796
+sosnowiec,Sosnowiec,śląskie,true,50.1601,50.4123,18.9067,19.3015
+torun,Toruń,kujawsko-pomorskie,false,52.8336,53.194,18.2986,18.8976
+kielce,Kielce,świętokrzyskie,false,50.6859,51.0463,20.3431,20.9141
+gliwice,Gliwice,śląskie,true,50.1684,50.4206,18.474,18.8688
+zabrze,Zabrze,śląskie,true,50.1988,50.451,18.5881,18.9833
+olsztyn,Olsztyn,warmińsko-mazurskie,false,53.5982,53.9586,20.1752,20.785
+bielsko-biala,Bielsko-Biała,śląskie,true,49.6422,50.0026,18.7651,19.3237
+bytom,Bytom,śląskie,true,50.2223,50.4745,18.7162,19.1116
+zielona-gora,Zielona Góra,lubuskie,false,51.7554,52.1158,15.214,15.7984
+rybnik,Rybnik,śląskie,false,49.9711,50.2233,18.3446,18.7378
+ruda-slaska,Ruda Śląska,śląskie,false,50.1293,50.3815,18.659,19.0536
+opole,Opole,opolskie,false,50.4919,50.8523,17.641,18.2096
+tychy,Tychy,śląskie,true,50.0096,50.2618,18.7695,19.1631
+gorzow-wielkopolski,Gorzów Wielkopolski,lubuskie,false,52.5566,52.917,14.9312,15.5264
+dabrowa-gornicza,Dąbrowa Górnicza,śląskie,false,50.1959,50.4481,18.9988,19.3938
+plock,Płock,mazowieckie,false,52.3666,52.727,19.4101,20.0027
+elblag,Elbląg,warmińsko-mazurskie,false,53.972,54.3324,19.1011,19.7165
+walbrzych,Wałbrzych,dolnośląskie,false,50.5915,50.9519,15.9994,16.5692
+chorzow,Chorzów,śląskie,true,50.1716,50.4238,18.7774,19.1722
