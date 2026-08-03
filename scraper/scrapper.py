@@ -122,9 +122,7 @@ async def fetch_olx_page_async(
             {"key": "region_id", "value": region_id},
         ]
     else:
-        logger.warning(
-            f"[{city.upper()}] No location_id mapping found — falling back to free-text query"
-        )
+        logger.warning(f"[{city.upper()}] No location_id mapping found — falling back to free-text query")
         location_params = [{"key": "query", "value": city}]
 
     payload = {
@@ -167,7 +165,7 @@ async def scrape_city_async(
     client: httpx.AsyncClient,
     limiter: GlobalRateLimiter,
     city: str,
-    max_pages: int = 25,
+    max_pages: int = 150,
 ) -> list:
     """Scrapes and parses all sale listings for a single city, paginating through results.
 
@@ -177,6 +175,7 @@ async def scrape_city_async(
     """
     all_listings = []
     limit = 40
+    total_elements = None
 
     for page in range(max_pages):
         offset = page * limit
@@ -222,6 +221,16 @@ async def scrape_city_async(
                 break
         elif len(raw_items) < limit:
             break  # last page reached (no usable total_elements to check against)
+    else:
+        # Loop exhausted max_pages without hitting a break above — i.e. we
+        # never satisfied total_elements. Silent truncation for big cities
+        # is worse than a noisy log line, so flag it explicitly.
+        if isinstance(total_elements, int) and total_elements > max_pages * limit:
+            logger.warning(
+                f"[{city.upper()}] Hit max_pages={max_pages} limit but API reports "
+                f"{total_elements} total listings — results are truncated. "
+                f"Increase max_pages for this city."
+            )
 
     unique_listings = list({item["id"]: item for item in all_listings}.values())
     logger.info(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
