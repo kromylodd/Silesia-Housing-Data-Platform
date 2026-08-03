@@ -167,7 +167,7 @@ async def scrape_city_async(
     client: httpx.AsyncClient,
     limiter: GlobalRateLimiter,
     city: str,
-    max_pages: int = 150,
+    max_pages: int = 25,
 ) -> list:
     """Scrapes and parses all sale listings for a single city, paginating through results.
 
