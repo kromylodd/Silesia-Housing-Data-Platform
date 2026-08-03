@@ -122,7 +122,9 @@ async def fetch_olx_page_async(
             {"key": "region_id", "value": region_id},
         ]
     else:
-        logger.warning(f"[{city.upper()}] No location_id mapping found — falling back to free-text query")
+        logger.warning(
+            f"[{city.upper()}] No location_id mapping found — falling back to free-text query"
+        )
         location_params = [{"key": "query", "value": city}]
 
     payload = {
