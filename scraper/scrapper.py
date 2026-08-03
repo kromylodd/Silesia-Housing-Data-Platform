@@ -85,6 +85,9 @@ query ListingSearchQuery(
           }
         }
       }
+      metadata {
+        total_elements
+      }
     }
     ... on ListingError {
       error {
@@ -196,6 +199,10 @@ async def scrape_city_async(
             break
 
         raw_items = listings_data.get("data", [])
+        total_elements = listings_data.get("metadata", {}).get("total_elements")
+        if page == 0:
+            logger.info(f"[{city.upper()}] API reports {total_elements} total listings")
+
         if not raw_items:
             break
 
@@ -205,8 +212,16 @@ async def scrape_city_async(
             except Exception as err:
                 logger.warning(f"[{city.upper()}] Skipping ad due to error: {err}")
 
-        if len(raw_items) < limit:
-            break  # last page reached
+        # Prefer the API's own count as the stop condition — a short page
+        # (promoted-ad reshuffling, a dropped invalid item) doesn't
+        # necessarily mean we've reached the end of the result set.
+        # `len(raw_items) < limit` stays as a fallback for the rare case
+        # total_elements comes back null/zero.
+        if isinstance(total_elements, int) and total_elements > 0:
+            if offset + limit >= total_elements:
+                break
+        elif len(raw_items) < limit:
+            break  # last page reached (no usable total_elements to check against)
 
     unique_listings = list({item["id"]: item for item in all_listings}.values())
     logger.info(f"[{city.upper()}] Finished. Unique listings: {len(unique_listings)}")
