@@ -1,5 +1,7 @@
 import asyncio
+import csv
 import logging
+import os
 import random
 import time
 
@@ -11,6 +13,31 @@ from rate_limiter import GlobalRateLimiter
 logger = logging.getLogger(__name__)
 
 GRAPHQL_URL = "https://www.olx.pl/apigateway/graphql"  # Note: OLX sometimes switches between /api/graphql and /apigateway/graphql
+
+LOCATION_IDS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "olx_location_ids.csv")
+
+
+def _load_location_ids(path: str = LOCATION_IDS_PATH) -> dict:
+    """source_city -> (city_id, region_id), as produced by location_id_builder.py.
+
+    Using the resolved location IDs instead of a free-text "query" search
+    parameter avoids OLX's fuzzy text matching, which is the main source of
+    noise flagged for the 34-city expansion. A city missing from the CSV
+    (or a missing/unreadable CSV) falls back to free-text search rather
+    than raising, so a stale mapping degrades one city instead of killing
+    the whole batch.
+    """
+    ids = {}
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ids[row["source_city"]] = (row["city_id"], row["region_id"])
+    except FileNotFoundError:
+        logger.warning(f"{path} not found — falling back to free-text city search for all cities")
+    return ids
+
+
+LOCATION_IDS = _load_location_ids()
 
 HEADERS = {
     "accept": "application/json",
@@ -84,6 +111,19 @@ async def fetch_olx_page_async(
     retry after a transient failure still respects the global pacing budget
     instead of firing immediately.
     """
+    location = LOCATION_IDS.get(city)
+    if location:
+        city_id, region_id = location
+        location_params = [
+            {"key": "city_id", "value": city_id},
+            {"key": "region_id", "value": region_id},
+        ]
+    else:
+        logger.warning(
+            f"[{city.upper()}] No location_id mapping found — falling back to free-text query"
+        )
+        location_params = [{"key": "query", "value": city}]
+
     payload = {
         "operationName": "ListingSearchQuery",
         "query": QUERY,
@@ -91,7 +131,7 @@ async def fetch_olx_page_async(
             "searchParameters": [
                 {"key": "offset", "value": str(offset)},
                 {"key": "limit", "value": str(limit)},
-                {"key": "query", "value": city},
+                *location_params,
                 {"key": "category_id", "value": "14"},
                 {"key": "suggest_filters", "value": "true"},
             ],

@@ -24,6 +24,7 @@ gcp-key.json
 *.json
 !scraper/tests/*.json
 !dbt/seeds/*.csv
+!scraper/olx_location_ids.csv
 
 # --- dbt ---
 dbt/target/
