@@ -1,4 +1,4 @@
-{{ config(severity='warn') }}
+{{ config(severity='error') }}
 
 -- Defense-in-depth: GE already blocks this pre-load (validate_batch.py's
 -- per-city latitude/longitude bounding-box check, sourced from the same
